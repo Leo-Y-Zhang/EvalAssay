@@ -336,7 +336,8 @@ def load_arc_parquet(path: Path) -> ItemSet:
         import pandas as pd  # noqa: PLC0415 - optional dependency, imported on demand
     except ImportError as exc:  # pragma: no cover - environment dependent
         raise ImportError(
-            "reading parquet needs pandas; install it or use the JSON Lines loader"
+            'reading parquet needs pandas; install it with pip install "evalassay[parquet]" '
+            "or use the JSON Lines loader"
         ) from exc
 
     frame = pd.read_parquet(path)
@@ -382,7 +383,10 @@ def load_mmlu_parquet(path: Path) -> ItemSet:
     try:
         import pandas as pd  # noqa: PLC0415 - optional dependency, imported on demand
     except ImportError as exc:  # pragma: no cover - environment dependent
-        raise ImportError("reading parquet needs pandas; install it or use the CSV loader") from exc
+        raise ImportError(
+            'reading parquet needs pandas; install it with pip install "evalassay[parquet]" '
+            "or use the CSV loader"
+        ) from exc
 
     frame = pd.read_parquet(path)
     items: list[Item] = []

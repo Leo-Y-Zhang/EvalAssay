@@ -180,7 +180,7 @@ only looking at the underlying items revealed it.
 No model, no dataset, no network:
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[parquet,dev]"
 python -m evalassay.cli demo        # or: assay demo
 ```
 

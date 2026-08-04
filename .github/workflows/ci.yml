@@ -36,8 +36,9 @@ jobs:
           python -m pip install --upgrade pip
           # The 'local' and 'api' extras are deliberately excluded: CI proves the
           # instrument, and the instrument is proven against the deterministic
-          # oracle scorer, not against a downloaded model.
-          python -m pip install -e ".[probe,dev]"
+          # oracle scorer, not against a downloaded model. 'parquet' is included
+          # because the loaders that need it are part of the tested surface.
+          python -m pip install -e ".[parquet,dev]"
 
       - name: Lint
         run: python -m ruff check src tests verify.py

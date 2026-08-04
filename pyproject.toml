@@ -23,8 +23,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Lexical solvability probe (model-free pathology layer).
-probe = ["scikit-learn>=1.3"]
+# Reading benchmarks distributed as parquet.
+parquet = ["pandas>=2.0", "pyarrow>=14"]
 # Local exact log-likelihood scoring.
 local = ["torch>=2.0", "transformers>=4.40"]
 # Hosted-model scoring adapter.
@@ -91,7 +91,7 @@ disallow_any_generics = true
 
 [[tool.mypy.overrides]]
 # These ship no type information; the boundary is wrapped in our own typed code.
-module = ["scipy.*", "sklearn.*", "torch.*", "transformers.*", "anthropic.*", "pandas.*"]
+module = ["scipy.*", "torch.*", "transformers.*", "anthropic.*", "pandas.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
