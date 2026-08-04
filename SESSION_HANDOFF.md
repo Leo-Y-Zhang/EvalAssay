@@ -6,12 +6,22 @@ Building EvalAssay to a complete, recruiter-grade v1 without further input.
 Work continuously: increment -> gate -> commit targeted paths -> push -> next
 increment. Do not pause between increments.
 
-**NEXT ACTION:** the real audits are running in the background against ARC-Easy
-and ARC-Challenge with Qwen2.5-0.5B-Instruct, writing to `runs/`. When they
-finish: read the reports, write `docs/FINDINGS.md` and `docs/METHOD.md`, and
-rewrite the README around the measured numbers. If the runs died, relaunch with
-`python -m evalassay.cli audit data/arc-easy.jsonl --model Qwen/Qwen2.5-0.5B-Instruct
---items 250 --seed 7 --json runs/arc-easy.json`.
+**NEXT ACTION:** four audits are running in the background and write to `runs/`
+(`_audit.log` prints ALLDONE when finished). When they land, add a model-side
+section to `docs/FINDINGS.md` and update the README's status table.
+
+The four runs are two benchmarks crossed with two scoring styles, because the
+comparison is itself the finding: option permutation cannot measure anything
+under `cloze` scoring and can under `labelled`.
+
+    for BENCH in arc-easy arc-challenge; do for STYLE in labelled cloze; do
+      python -m evalassay.cli audit "data/$BENCH.jsonl"         --model Qwen/Qwen2.5-0.5B-Instruct --style "$STYLE"         --items 250 --seed 7 --json "runs/$BENCH-$STYLE.json"         > "runs/$BENCH-$STYLE.txt" 2>"runs/$BENCH-$STYLE.err"
+    done; done
+
+Each run takes roughly forty minutes on CPU. `data/*.jsonl` already exists and
+the model is already in the local cache; nothing needs downloading. If a run
+died, relaunch just that one. **Findings already banked and written up are in
+`docs/FINDINGS.md` - do not re-derive them.**
 
 ## The gate (must be green before every commit)
 
@@ -118,6 +128,16 @@ survives the audit.
   families**, because they answer different questions; the combined error rate
   is therefore bounded by roughly the sum rather than by alpha, and METHOD.md
   says so.
+- **Option permutation is inert under `cloze` scoring and only measurable under
+  `labelled`.** Cloze scores each option as a continuation of a prompt that never
+  contains the others, so position never reaches the model. Measured: 0 of 12
+  items changed answer under rotation with cloze, 3 of 12 with labelled. The
+  audit detects an intervention that changed no outcome anywhere and reports it
+  as *inert against this backend*, which is not the same as *not established*.
+- **The report only asserts an interpretation when the interval supports it.**
+  Blind accuracy of 0.316 with interval [0.244, 0.392] against chance 0.250 was
+  being narrated as "the model is not answering the question"; the interval
+  includes chance, so that was unsupported.
 - **The repo is born clean and has been scanned:** no machine paths, no personal
   identifiers, no other project names, no agent files tracked, correct identity
   on author and committer, no AI trailers. It can be flipped public as-is.
