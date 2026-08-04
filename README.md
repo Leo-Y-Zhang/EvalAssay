@@ -67,6 +67,29 @@ Neither number is the right one. A benchmark score is not a property of a model
 alone; it is a property of a model *and* a presentation, and the presentation is
 rarely stated next to the score.
 
+### And on MMLU, the question turned out to be worth 4.8 points
+
+The sharpest result came from the diagnostic that deliberately sits *outside*
+the decomposition — accuracy with the question **removed entirely**:
+
+| | |
+|---|---|
+| Reported score on MMLU | 0.4200 |
+| **Score with no question at all** | **0.3720** [0.2920, 0.4480] |
+| Chance | 0.2500 |
+| What the question adds | **+0.0480**, paired p = **0.20** |
+
+Both statements are established at the stated thresholds: the model scores **12
+points above chance with nothing to answer**, and removing the question does
+**not** significantly change its accuracy. Almost the whole score is available
+without reading the question.
+
+This is why hiding the question is measured separately rather than charged as an
+artifact. Folded into the decomposition it would have been mistaken for
+capability and never surfaced.
+
+(p = 0.20 means *not distinguished from zero here*, not *shown to be zero*.)
+
 Full numbers, reproduce commands and caveats: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ---
