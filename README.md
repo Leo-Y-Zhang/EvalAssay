@@ -41,6 +41,36 @@ heavier dependencies are optional and imported only inside the functions that
 need them, which a test enforces by reading the source rather than trusting
 whatever happens to be installed.
 
+### Two models, 1.6 points apart or 46, depending only on how you ask
+
+The sharpest thing this tool has found is not about a score. It is about a
+ranking.
+
+| Model | `cloze` | `labelled` |
+|---|---|---|
+| SmolLM2-135M | 0.5360 | 0.2840 |
+| Qwen2.5-0.5B | 0.5520 | 0.7440 |
+| **distance apart** | **1.6 points** | **46.0 points** |
+
+Same 250 ARC-Easy items, same seed, identical corpus hash on every run. Scored
+by continuation, these two models are effectively tied. Presented as labelled
+multiple choice, one reports as roughly two and a half times the other.
+
+**The gap does not shrink with model size — it changes sign.** The smaller model
+is 25 points *worse* under labelled presentation; the larger is 19 points
+*better*. Labelled multiple choice tests two things at once: knowing the answer,
+and being able to follow "reply with the letter". The 135M model sits at chance
+in that format not for want of knowledge — score it by continuation and it
+recovers to within two points of a model four times its size — but because it
+cannot work the format. So the format under-reports models that cannot follow it
+and rewards models that can exploit it, and those two errors point in opposite
+directions.
+
+That run also produced the first artifact the decomposition has ever charged
+against a real model: **7.4 points of the 135M's continuation score came from
+weak distractors** (purity 86.2%), after five earlier audits in which it
+correctly charged nothing.
+
 ### And nineteen points of a real score turned out to be presentation
 
 Qwen2.5-0.5B-Instruct, 250 ARC-Easy items, same seed, audited twice with only
