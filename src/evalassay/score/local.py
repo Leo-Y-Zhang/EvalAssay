@@ -40,6 +40,35 @@ Deliberately the same shape minus the question, so the blind condition differs
 from the normal one in exactly one respect.
 """
 
+LABELS: Final = "ABCDEFGH"
+"""Option labels used by the labelled scoring style."""
+
+CLOZE: Final = "cloze"
+"""Score each option as a continuation, with the options never shown as a list."""
+
+LABELLED: Final = "labelled"
+"""Present the options as a labelled list and score the label tokens."""
+
+STYLES: Final = (CLOZE, LABELLED)
+"""The two ways a local model can be asked a multiple-choice question.
+
+The distinction is not cosmetic and it changes what an audit can see.
+
+Under ``cloze`` an option is scored as a continuation of a prompt that never
+contains the other options. Nothing about an option's *position* reaches the
+model, so option permutation is structurally incapable of moving the result and
+the audit reports it as inert.
+
+Under ``labelled`` the options appear as a numbered list and the model scores the
+label tokens. Position is now part of what the model sees, and a positional
+preference becomes measurable - which is the setting most published leaderboard
+numbers are produced in.
+
+Auditing the same model on the same items under both styles is therefore a way
+to measure how much of a score depends on the presentation rather than on the
+question.
+"""
+
 
 class LocalScorer:
     """Exact log-likelihood scoring with a locally loaded causal model.
@@ -53,6 +82,7 @@ class LocalScorer:
         self,
         model_name: str,
         *,
+        style: str = CLOZE,
         length_normalise: bool = True,
         max_length: int = 1024,
         device: str = "cpu",
@@ -61,6 +91,10 @@ class LocalScorer:
 
         Args:
             model_name: Hugging Face identifier or local path.
+            style: One of :data:`STYLES`. ``cloze`` scores each option as a
+                continuation and never shows the model the option list;
+                ``labelled`` presents the options as a list and scores the label
+                tokens. Only the second can exhibit positional effects.
             length_normalise: Divide summed log-likelihood by token count.
             max_length: Truncation length for the combined prompt and option.
             device: Torch device string.
@@ -69,7 +103,10 @@ class LocalScorer:
             ImportError: If the optional local-scoring dependencies are absent.
                 Raised with an actionable message rather than a bare import
                 error, because this is the most likely thing to be missing.
+            ValueError: If the style is not one of :data:`STYLES`.
         """
+        if style not in STYLES:
+            raise ValueError(f"style must be one of {STYLES}, got {style!r}")
         try:
             import torch  # noqa: PLC0415 - optional dependency, imported on demand
             from transformers import (  # noqa: PLC0415
@@ -83,6 +120,7 @@ class LocalScorer:
             ) from exc
 
         self.model_name = model_name
+        self.style = style
         self.length_normalise = length_normalise
         self._max_length = max_length
         self._torch = torch
@@ -100,7 +138,7 @@ class LocalScorer:
     def scorer_id(self) -> str:
         """Identifier recorded in the run manifest."""
         suffix = "norm" if self.length_normalise else "sum"
-        return f"local:{self.model_name}:{suffix}"
+        return f"local:{self.model_name}:{self.style}:{suffix}"
 
     @property
     def deterministic(self) -> bool:
@@ -115,11 +153,35 @@ class LocalScorer:
 
         Returns:
             The prompt text.
+
+        Raises:
+            ValueError: If a labelled prompt would need more labels than exist.
         """
         question = item.question.strip()
-        if not question:
-            return BLIND_TEMPLATE
-        return PROMPT_TEMPLATE.format(question=question)
+
+        if self.style == CLOZE:
+            return BLIND_TEMPLATE if not question else PROMPT_TEMPLATE.format(question=question)
+
+        if item.n_choices > len(LABELS):
+            raise ValueError(f"cannot label {item.n_choices} options; {len(LABELS)} available")
+        lines = [f"Question: {question}"] if question else []
+        lines.extend(f"{LABELS[i]}. {choice}" for i, choice in enumerate(item.choices))
+        lines.append("Answer:")
+        return "\n".join(lines)
+
+    def _continuations(self, item: Item) -> list[str]:
+        """The texts whose likelihood is compared, one per option.
+
+        Args:
+            item: The item or variant.
+
+        Returns:
+            The option texts under the cloze style, or the labels under the
+            labelled style.
+        """
+        if self.style == CLOZE:
+            return [" " + choice.strip() for choice in item.choices]
+        return [" " + LABELS[index] for index in range(item.n_choices)]
 
     def score(self, item: Item) -> FloatArray:
         """Score every option by its likelihood as a continuation.
@@ -143,10 +205,8 @@ class LocalScorer:
 
         sequences: list[list[int]] = []
         lengths: list[int] = []
-        for choice in item.choices:
-            continuation = self._tokenizer(" " + choice.strip(), add_special_tokens=False)[
-                "input_ids"
-            ]
+        for text in self._continuations(item):
+            continuation = self._tokenizer(text, add_special_tokens=False)["input_ids"]
             if not continuation:
                 # An option that tokenises to nothing carries no evidence. Give
                 # it one padding token and a neutral score rather than dividing
@@ -190,6 +250,7 @@ class LocalScorer:
         return {
             "backend": "local",
             "model": self.model_name,
+            "style": self.style,
             "length_normalise": self.length_normalise,
             "max_length": self._max_length,
             "device": self._device,

@@ -242,7 +242,7 @@ def cmd_audit(args: argparse.Namespace) -> int:
     from evalassay.score.local import LocalScorer  # noqa: PLC0415 - optional dependency
 
     corpus = _prepare(_load(args.format, args.corpus), args.items, args.seed)
-    scorer = LocalScorer(args.model, length_normalise=not args.unnormalised)
+    scorer = LocalScorer(args.model, style=args.style, length_normalise=not args.unnormalised)
     report = run_audit(corpus, scorer, AuditConfig(seed=args.seed, gate=_gate(args)))
     _emit(render(report), to_json(report) if args.json else None, args.json)
     return 0
@@ -312,6 +312,18 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--format", choices=sorted(LOADERS), default="canonical")
     audit.add_argument("--items", type=int, default=None, help="subsample to this many items")
     audit.add_argument("--seed", type=int, default=7)
+    audit.add_argument(
+        "--style",
+        choices=["cloze", "labelled"],
+        default="cloze",
+        help=(
+            "how the question is put to the model. 'cloze' scores each option as a "
+            "continuation and never shows the option list, so option position cannot "
+            "affect the result; 'labelled' presents the options as a list and scores "
+            "the label, which is how most leaderboard numbers are produced and the "
+            "only setting in which positional preference is measurable"
+        ),
+    )
     audit.add_argument(
         "--unnormalised",
         action="store_true",

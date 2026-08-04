@@ -178,8 +178,11 @@ def test_the_api_backend_never_reads_the_answer_key() -> None:
 # --------------------------------------------------------------------------
 
 
-def _local_scorer() -> Any:
+def _local_scorer(style: str = "cloze") -> Any:
     """Build a local scorer, or skip if no model is available offline.
+
+    Args:
+        style: Scoring style to build.
 
     Returns:
         The scorer.
@@ -190,15 +193,21 @@ def _local_scorer() -> Any:
     from evalassay.score.local import LocalScorer
 
     try:
-        return LocalScorer(MODEL_FOR_LOCAL_TESTS)
+        return LocalScorer(MODEL_FOR_LOCAL_TESTS, style=style)
     except Exception as exc:
         pytest.skip(f"no local model available: {type(exc).__name__}")
 
 
 @pytest.fixture(scope="module")
 def local_scorer() -> Any:
-    """A locally loaded model, shared across the tests in this module."""
-    return _local_scorer()
+    """A locally loaded model scoring in the cloze style."""
+    return _local_scorer("cloze")
+
+
+@pytest.fixture(scope="module")
+def labelled_scorer() -> Any:
+    """A locally loaded model scoring in the labelled style."""
+    return _local_scorer("labelled")
 
 
 @pytest.mark.slow
@@ -267,3 +276,72 @@ def test_an_empty_option_does_not_break_scoring(local_scorer: Any) -> None:
     assert scores.shape == (2,)
     assert np.all(np.isfinite(scores))
     assert 0 <= break_ties(scores, item.question, item.choices) < 2
+
+
+# --------------------------------------------------------------------------
+# The two local scoring styles
+# --------------------------------------------------------------------------
+
+
+def test_an_unknown_style_is_refused() -> None:
+    pytest.importorskip("torch", reason="local scoring needs the optional extras")
+    from evalassay.score.local import LocalScorer
+
+    with pytest.raises(ValueError, match="style must be one of"):
+        LocalScorer(MODEL_FOR_LOCAL_TESTS, style="freeform")
+
+
+@pytest.mark.slow
+def test_the_style_is_recorded_in_the_scorer_identity(labelled_scorer: Any) -> None:
+    # The manifest has to distinguish the two, because they can give different
+    # answers on the same items.
+    assert ":labelled:" in labelled_scorer.scorer_id
+    assert labelled_scorer.describe()["style"] == "labelled"
+
+
+@pytest.mark.slow
+def test_the_labelled_prompt_shows_the_option_list(labelled_scorer: Any) -> None:
+    prompt = labelled_scorer._prompt_for(_item())
+    for index in range(4):
+        assert f"{'ABCD'[index]}. option {index}" in prompt
+    assert prompt.rstrip().endswith("Answer:")
+
+
+@pytest.mark.slow
+def test_the_cloze_prompt_hides_the_option_list(local_scorer: Any) -> None:
+    # This is why option permutation cannot bite under cloze scoring: nothing
+    # about an option's position reaches the model.
+    prompt = local_scorer._prompt_for(_item())
+    for index in range(4):
+        assert f"option {index}" not in prompt
+
+
+@pytest.mark.slow
+def test_cloze_scoring_is_invariant_to_option_order(local_scorer: Any) -> None:
+    # The structural property that makes the audit call permutation inert here.
+    item = _item()
+    base = local_scorer.score(item)
+    rotated = Item(
+        item_id=item.item_id,
+        question=item.question,
+        choices=item.choices[1:] + item.choices[:1],
+        answer_index=0,
+    )
+    np.testing.assert_allclose(local_scorer.score(rotated), np.roll(base, -1), rtol=1e-4, atol=1e-5)
+
+
+@pytest.mark.slow
+def test_labelled_scoring_is_not_invariant_to_option_order(labelled_scorer: Any) -> None:
+    # Under labelled scoring the model sees the list, so moving an option can
+    # change its score. Without this the permutation intervention would have
+    # nothing to measure against any backend.
+    item = _item()
+    base = labelled_scorer.score(item)
+    rotated = Item(
+        item_id=item.item_id,
+        question=item.question,
+        choices=item.choices[1:] + item.choices[:1],
+        answer_index=0,
+    )
+    moved = labelled_scorer.score(rotated)
+    assert not np.allclose(moved, np.roll(base, -1), rtol=1e-3, atol=1e-4)
