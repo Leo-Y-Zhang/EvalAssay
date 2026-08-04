@@ -11,8 +11,9 @@ import pytest
 
 from evalassay.corpus.synthetic import (
     MARKER_WORD,
-    PAD_WORD,
+    PAD_WORDS,
     VOCABULARY,
+    WORD_LENGTH,
     CorpusSpec,
     generate,
 )
@@ -83,7 +84,48 @@ def test_padding_makes_the_correct_option_strictly_longest() -> None:
         lengths = [len(choice) for choice in item.choices]
         assert lengths[item.answer_index] == max(lengths)
         assert lengths.count(max(lengths)) == 1
-        assert PAD_WORD in item.choices[item.answer_index]
+
+
+def test_padding_adds_no_distinctive_token() -> None:
+    # A repeated filler word would be trivially learnable by the choices-only
+    # probe, so the longest-answer fixture would plant lexical leakage too and
+    # the two defects could not be calibrated apart.
+    spec = CorpusSpec(n_items=400, n_choices=4, seed=21, longest_answer_rate=1.0)
+    corpus = generate(spec)
+    in_correct: dict[str, int] = {}
+    in_wrong: dict[str, int] = {}
+    for item in corpus:
+        for index, choice in enumerate(item.choices):
+            target = in_correct if index == item.answer_index else in_wrong
+            for word in set(choice.split()):
+                target[word] = target.get(word, 0) + 1
+    # No token should appear in correct options far more often than in wrong
+    # ones, other than by ordinary sampling noise.
+    for word, correct_count in in_correct.items():
+        if correct_count >= 20:
+            assert in_wrong.get(word, 0) > 0, f"{word!r} appears only in correct options"
+
+
+def test_padding_adds_the_stated_number_of_words() -> None:
+    padded = generate(CorpusSpec(n_items=200, n_choices=4, seed=22, longest_answer_rate=1.0))
+    for item in padded:
+        counts = [len(choice.split()) for choice in item.choices]
+        others = [c for i, c in enumerate(counts) if i != item.answer_index]
+        assert counts[item.answer_index] == others[0] + PAD_WORDS
+
+
+def test_every_vocabulary_word_has_the_same_length() -> None:
+    # Load-bearing: it is what makes the lexical marker length-neutral.
+    assert all(len(word) == WORD_LENGTH for word in VOCABULARY)
+    assert len(MARKER_WORD) == WORD_LENGTH
+    assert MARKER_WORD not in VOCABULARY
+
+
+def test_a_clean_corpus_gives_every_option_the_same_length() -> None:
+    # Consequence of the equal-length vocabulary: the longest-option heuristic
+    # is reduced to a full tie, so its expected accuracy is exactly chance.
+    for item in generate(CorpusSpec(n_items=200, n_choices=4, seed=23)):
+        assert len({len(choice) for choice in item.choices}) == 1
 
 
 def test_option_text_carries_no_signal_about_position() -> None:

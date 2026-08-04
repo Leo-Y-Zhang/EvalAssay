@@ -6,9 +6,10 @@ Building EvalAssay to a complete, recruiter-grade v1 without further input.
 Work continuously: increment -> gate -> commit targeted paths -> push -> next
 increment. Do not pause between increments.
 
-**NEXT ACTION:** build the corpus layer (`src/evalassay/corpus/`) - canonical
-JSONL format, a synthetic generator that plants known artifacts, and loaders for
-the multiple-choice benchmark families.
+**NEXT ACTION:** build `src/evalassay/intervene/` and `src/evalassay/score/` -
+the paired interventions (option permutation, hide-question, verified
+meaning-preserving rewrite, distractor injection), the `Scorer` interface with
+oracle / local / API backends, and the content-addressed score cache.
 
 ## The gate (must be green before every commit)
 
@@ -40,11 +41,12 @@ survives the audit.
 3. [DONE] Statistics core (`stats/`): exact McNemar, BCa bootstrap, exact
    Shapley operator, Holm correction, default-deny gate, minimum detectable
    effect.
-4. [NEXT] Corpus layer: canonical format, synthetic generator with planted
+4. [DONE] Corpus layer: canonical format, synthetic generator with planted
    artifacts, benchmark loaders.
-5. Pathology detectors (model-free): choices-only solvability, position skew,
-   longest-answer heuristic, near-duplicates, answer-leakage cues.
-6. Interventions and scorers: option permutation, hide-question, verified
+5. [DONE] Pathology detectors (model-free): choices-only solvability, position
+   skew, longest-answer heuristic, near-duplicates. Each calibrated against
+   planted defects and verified silent on clean corpora.
+6. [NEXT] Interventions and scorers: option permutation, hide-question, verified
    meaning-preserving rewrite, distractor injection; oracle / local / API
    scorer backends behind one interface, with a content-addressed score cache.
 7. Calibration harness: prove the instrument recovers planted effects within
@@ -72,6 +74,20 @@ survives the audit.
 - **Escape sequences, not pasted characters,** for non-ASCII test fixtures.
   A normalising editor silently turned two Unicode tests into tautologies once;
   the guards in `tests/test_hashing.py` now detect that.
+- **Detectors that assume independent items are handed a deduplicated corpus.**
+  An exact repeat is not a second observation, and leaving repeats in shrinks the
+  effective sample size without shrinking the nominal one. Measured, not
+  theoretical: a corpus with a tenth of its items duplicated made the
+  position-skew test report significance on a key that was in fact uniform.
+- **Synthetic vocabulary words are all the same length.** The lexical marker is
+  planted by substitution, so unequal lengths would make planted leakage
+  register in the longest-answer detector too, and the two defects could not be
+  calibrated apart. Padding likewise draws ordinary words rather than repeating
+  one filler token, which the choices-only probe would learn instantly.
+- **Duplicate candidates are indexed from rare tokens, not by excluding common
+  ones.** The excluding version silently produced zero candidates on a
+  small-vocabulary corpus and reported a corpus that was a tenth duplicates as
+  clean.
 
 ## Repository conventions
 

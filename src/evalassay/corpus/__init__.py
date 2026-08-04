@@ -27,17 +27,19 @@ from evalassay.corpus.loaders import (
 )
 from evalassay.corpus.synthetic import (
     MARKER_WORD,
-    PAD_WORD,
+    PAD_WORDS,
     VOCABULARY,
+    WORD_LENGTH,
     CorpusSpec,
     generate,
 )
 
 __all__ = [
     "MARKER_WORD",
-    "PAD_WORD",
+    "PAD_WORDS",
     "REQUIRED_FIELDS",
     "VOCABULARY",
+    "WORD_LENGTH",
     "CorpusSpec",
     "from_items",
     "generate",

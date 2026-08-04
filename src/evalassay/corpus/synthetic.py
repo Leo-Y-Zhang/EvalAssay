@@ -29,42 +29,59 @@ import numpy as np
 
 from evalassay.types import Item, ItemSet
 
+WORD_LENGTH: Final = 7
+"""Every vocabulary word is exactly this many characters.
+
+Uniform length is load-bearing, not cosmetic. The lexical marker is planted by
+*substituting* a word, so if words varied in length the substitution would also
+change the option's length, and planted lexical leakage would register in the
+longest-answer detector too. Fixing the length makes the two defects genuinely
+independent, which is what lets each be calibrated on its own.
+
+It also means an unpadded item has every option exactly the same length, so the
+longest-option heuristic is reduced to guessing among a full set of ties, and
+its expected accuracy is then exactly chance with no approximation.
+"""
+
+_CONSONANTS: Final = "bdfgklmnprstvz"
+_VOWELS: Final = "aeiou"
+
 VOCABULARY: Final = tuple(
-    f"{stem}{suffix}"
-    for stem in (
-        "lantern",
-        "harbour",
-        "meadow",
-        "cinder",
-        "quarry",
-        "thistle",
-        "beacon",
-        "furrow",
-        "gable",
-        "kestrel",
-        "marram",
-        "pewter",
-        "rowan",
-        "sable",
-        "tundra",
-        "vellum",
+    dict.fromkeys(
+        _CONSONANTS[i % len(_CONSONANTS)]
+        + _VOWELS[(i // 3) % len(_VOWELS)]
+        + _CONSONANTS[(i // 5) % len(_CONSONANTS)]
+        + _VOWELS[(i // 7) % len(_VOWELS)]
+        + _CONSONANTS[(i // 11) % len(_CONSONANTS)]
+        + _VOWELS[(i // 13) % len(_VOWELS)]
+        + _CONSONANTS[(i // 17) % len(_CONSONANTS)]
+        for i in range(600)
     )
-    for suffix in ("", "s", "-wise", "-like", "-fold", "-ward", "-most", "-ish")
 )
-"""A closed vocabulary with no natural correlation to correctness."""
+"""A closed vocabulary of equal-length pseudo-words, uncorrelated with correctness."""
 
 MARKER_WORD: Final = "quorate"
-"""Substituted into the correct option to plant lexical answer leakage."""
+"""Substituted into the correct option to plant lexical answer leakage.
 
-PAD_WORD: Final = "moreover"
-"""Appended to the correct option to plant the longest-answer defect."""
+Exactly :data:`WORD_LENGTH` characters, and not itself a vocabulary word, so the
+substitution is perfectly length-neutral.
+"""
+
+PAD_WORDS: Final = 6
+"""How many extra words are appended to plant the longest-answer defect.
+
+The padding words are drawn from the ordinary vocabulary rather than being a
+single distinctive filler token. A repeated filler word would be trivially
+learnable by the choices-only probe, so the longest-answer fixture would plant
+lexical leakage as well as length and the two defects could not be calibrated
+apart. Drawing ordinary words leaves length as the only planted signal.
+"""
 
 SUBJECTS: Final = ("alpha", "beta", "gamma", "delta")
 """Placeholder subject labels, used to exercise stratified sampling."""
 
 _WORDS_PER_OPTION: Final = 4
 _WORDS_PER_QUESTION: Final = 9
-_PAD_WORDS: Final = 6
 MIN_CHOICES: Final = 2
 
 
@@ -206,7 +223,8 @@ def generate(spec: CorpusSpec) -> ItemSet:
             options[answer_index] = " ".join(words)
 
         if padded_flags[index]:
-            options[answer_index] = options[answer_index] + " " + " ".join([PAD_WORD] * _PAD_WORDS)
+            filler = " ".join(_draw_words(rng, PAD_WORDS))
+            options[answer_index] = options[answer_index] + " " + filler
 
         items.append(
             Item(
