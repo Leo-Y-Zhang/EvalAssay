@@ -1,0 +1,40 @@
+# Agent / assistant instruction files are never tracked.
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.claude/
+.cursor/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Benchmark data is fetched by the user, never vendored (see LICENCE section 6).
+data/
+!data/.gitkeep
+
+# Score caches and audit outputs are reproducible artifacts, not source.
+.assay_cache/
+runs/
+!runs/.gitkeep
+
+# Model weights and tokenizer caches
+models/
+*.safetensors
+*.gguf
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp

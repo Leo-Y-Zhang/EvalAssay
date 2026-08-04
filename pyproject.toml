@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evalassay"
+version = "0.1.0"
+description = "Decomposes a reported LLM benchmark score into measured capability and measured artifacts."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Leo Y. Zhang" }]
+keywords = ["evaluation", "benchmark", "measurement", "reproducibility", "statistics"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+# Lexical solvability probe (model-free pathology layer).
+probe = ["scikit-learn>=1.3"]
+# Local exact log-likelihood scoring.
+local = ["torch>=2.0", "transformers>=4.40"]
+# Hosted-model scoring adapter.
+api = ["anthropic>=0.40"]
+# Linters are pinned exactly: an unpinned linter turns a clean tree red on a
+# release day, which is a CI failure with no corresponding code change.
+dev = ["pytest>=8", "pytest-cov", "ruff==0.15.16", "mypy==2.1.0"]
+
+[project.scripts]
+assay = "evalassay.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+evalassay = ["py.typed"]
+
+# ---------------------------------------------------------------------------
+# Lint
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF", "ANN", "D", "PL", "C4", "PT"]
+ignore = [
+  "D203",    # incompatible with D211
+  "D213",    # incompatible with D212
+  "ANN401",  # explicit Any is used deliberately in the manifest layer
+  "PLR0913", # statistical entry points legitimately take many parameters
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D101", "D102", "D103", "D104", "PLR2004"]
+# This file deliberately contains confusable characters: they are the fixtures
+# for the normalisation tests, and flagging them would be flagging the subject.
+"tests/test_hashing.py" = ["D100", "D103", "PLR2004", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+warn_unreachable = true
+disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+# These ship no type information; the boundary is wrapped in our own typed code.
+module = ["scipy.*", "sklearn.*", "torch.*", "transformers.*", "anthropic.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+  "slow: calibration sweeps and inference-backed tests (deselect with '-m \"not slow\"')",
+]
