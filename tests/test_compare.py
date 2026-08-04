@@ -133,6 +133,24 @@ def test_the_rendered_comparison_shows_both_sides_and_the_difference() -> None:
     assert "attributable to whatever distinguishes the two scorers" in text
 
 
+def test_the_rendered_comparison_names_a_baseline_only_artifact() -> None:
+    # The asymmetric case: something established in the baseline and not in the
+    # variant is the direction a reader is most likely to care about, since it
+    # says the change removed an artifact.
+    memorising = _report(oracle=OracleSpec(skill=0.3, memorisation=0.4, seed=1))
+    clean = _report(oracle=OracleSpec(skill=0.5, seed=1))
+    text = render_comparison(compare(memorising, clean))
+    assert "charged only in baseline: neutral_reframing" in text
+
+
+def test_the_rendered_comparison_names_a_variant_only_artifact() -> None:
+    clean = _report(oracle=OracleSpec(skill=0.5, seed=1))
+    memorising = _report(oracle=OracleSpec(skill=0.3, memorisation=0.4, seed=1))
+    text = render_comparison(compare(clean, memorising))
+    assert "charged only in variant:" in text
+    assert "neutral_reframing" in text
+
+
 def test_the_rendered_comparison_says_when_nothing_differed() -> None:
     left = _report(oracle=OracleSpec(skill=0.50, seed=1))
     right = _report(oracle=OracleSpec(skill=0.52, seed=1))

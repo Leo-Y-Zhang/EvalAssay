@@ -121,6 +121,20 @@ def test_abstentions_are_counted_across_calls() -> None:
     assert scorer.describe()["abstentions"] == 2
 
 
+def test_an_empty_reply_is_an_abstention() -> None:
+    # A model that returns nothing at all must not be credited with a choice.
+    scorer, _ = _scorer([""])
+    scores = scorer.score(_item())
+    assert scores.sum() == 0.0
+    assert scorer.abstentions == 1
+
+
+def test_a_whitespace_only_reply_is_an_abstention() -> None:
+    scorer, _ = _scorer([" \n \t "])
+    assert scorer.score(_item()).sum() == 0.0
+    assert scorer.abstentions == 1
+
+
 def test_the_prompt_labels_every_option() -> None:
     scorer, client = _scorer(["A"])
     scorer.score(_item())
