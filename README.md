@@ -102,7 +102,17 @@ log-likelihood rather than generation, so there is no sampling and no answer
 parsing, and two runs produce byte-identical JSON. Hosted-API backends are
 recorded as `deterministic: false` and the report says so in as many words.
 
-**6. Hiding the question is deliberately *not* an artifact.**
+**6. An intervention that cannot bite says so.**
+Scoring each option as a continuation never shows the model the option *list*, so
+rotating the options cannot change any score and the permutation intervention is
+structurally incapable of measuring anything — measured: 0 of 12 items changed
+answer under rotation. The audit detects that the intervention changed no outcome
+anywhere and reports it as **inert against this backend**, which is not the same
+claim as *not established*. A `--style labelled` backend presents the options as a
+list, which is how most leaderboard numbers are produced, and there 3 of the same
+12 items did change.
+
+**7. Hiding the question is deliberately *not* an artifact.**
 Removing the question destroys the accuracy that *needed* the question — which is
 capability. Charging it would invert the meaning of the report. It is measured
 separately and reported as a floor: **blind accuracy**, the score with nothing to
