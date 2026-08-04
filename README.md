@@ -67,9 +67,12 @@ and rewards models that can exploit it, and those two errors point in opposite
 directions.
 
 That run also produced the first artifact the decomposition has ever charged
-against a real model: **7.4 points of the 135M's continuation score came from
-weak distractors** (purity 86.2%), after five earlier audits in which it
-correctly charged nothing.
+against a real model: **7.4 points of the 135M's continuation score did not
+survive a harder alternative** (purity 86.2%), after five earlier audits in
+which it correctly charged nothing. Note the phrasing — replacing a weak
+distractor with a plausible statement can make an item genuinely harder as well
+as less exploitable, and the audit cannot separate those, so the share is not
+claimed as "accuracy that came from weak distractors".
 
 ### And nineteen points of a real score turned out to be presentation
 

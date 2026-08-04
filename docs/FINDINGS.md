@@ -415,11 +415,17 @@ Every earlier audit came back at 100% purity. This one did not:
   Purity                                        86.2%
 ```
 
-**7.4 points of SmolLM2-135M's continuation-scored 0.5360 came from the wrong
-options being weak**, established at the pre-registered threshold. Replacing one
-distractor with a plausible statement from another item takes it away. That is
-the decomposition doing the job it was built for, on a real model, after five
-audits in which it correctly charged nothing.
+**7.4 points of SmolLM2-135M's continuation-scored 0.5360 did not survive a
+harder alternative**, established at the pre-registered threshold. Replacing one
+wrong option with a plausible statement drawn from another item takes it away.
+That is the decomposition doing the job it was built for, on a real model, after
+five audits in which it correctly charged nothing.
+
+The phrasing is deliberate and narrower than it could be. `docs/LIMITS.md` notes
+that a stronger distractor can make an item genuinely harder as well as merely
+less exploitable, and the audit cannot separate those two. So the share is *not*
+reported as "accuracy that came from weak distractors", which is the claim a
+reader would most like to make and the one the measurement does not support.
 
 ### A caveat on the 0.5B numbers in that table
 
