@@ -109,6 +109,20 @@ def test_the_example_demonstrates_both_outcomes() -> None:
     assert "not established" in text
 
 
+def test_the_readme_quotes_the_example_verbatim() -> None:
+    # The README presents that block as real output. If it drifts, the README is
+    # asserting something the tool no longer does, which is the exact failure
+    # this project exists to object to.
+    readme = (DOCS.parent / "README.md").read_text(encoding="utf-8")
+    committed = TEXT.read_text(encoding="utf-8").splitlines()
+
+    start = next(i for i, line in enumerate(committed) if line.startswith("Reported score"))
+    end = next(i for i, line in enumerate(committed) if "Purity" in line) + 1
+    block = "\n".join(committed[start:end])
+
+    assert block in readme, "the README quotes a report block that is no longer produced"
+
+
 def test_the_example_shares_sum_to_the_observed_drop() -> None:
     committed = json.loads(JSON.read_text(encoding="utf-8"))
     total = sum(component["estimate"]["point"] for component in committed["components"])

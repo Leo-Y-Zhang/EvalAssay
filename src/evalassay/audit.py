@@ -228,6 +228,41 @@ def _bootstrap_p_value(replicates: FloatArray, point: float) -> float:
     return min(1.0, 2.0 * (1 + tail) / (replicates.size + 1))
 
 
+def inert_players(outcomes: FloatArray, n_players: int) -> set[int]:
+    """Find interventions that changed no outcome on any item.
+
+    An intervention can be structurally unable to affect a given backend. The
+    clearest case is option permutation against log-likelihood scoring: each
+    option is scored independently as a continuation of the same prompt, so
+    rotating the option list cannot change any option's score, and the
+    intervention is a no-op by construction rather than by measurement.
+
+    Reporting that as "not established" would mislead in a way that matters. It
+    reads as "measured, and too small to establish", when the truth is "could
+    not have been measured at all here". The distinction between looking and
+    finding nothing, and being unable to look, is the one this project is most
+    concerned with keeping.
+
+    Args:
+        outcomes: ``(2**n_players, n_items)`` per-item correctness.
+        n_players: Number of interventions.
+
+    Returns:
+        Indices of interventions whose presence never changed an outcome.
+    """
+    inert: set[int] = set()
+    for player in range(n_players):
+        bit = 1 << player
+        unchanged = all(
+            np.array_equal(outcomes[mask], outcomes[mask | bit])
+            for mask in range(outcomes.shape[0])
+            if not mask & bit
+        )
+        if unchanged:
+            inert.add(player)
+    return inert
+
+
 def _library_versions() -> tuple[tuple[str, str], ...]:
     """Versions of libraries whose numerics could move a result.
 
@@ -278,6 +313,7 @@ def run_audit(
     replicates = shapley_bootstrap(outcomes, operator, counts)
     jackknife = shapley_jackknife(outcomes, operator)
 
+    inert = inert_players(outcomes, len(family))
     raw_p = [_bootstrap_p_value(replicates[i], float(shares[i])) for i in range(len(family))]
     adjusted = holm_bonferroni(raw_p)
 
@@ -298,12 +334,19 @@ def run_audit(
             method=SHAPLEY_METHOD,
         )
         decision = decide(estimate, adjusted[index], settings.gate)
+        if index in inert:
+            reason = (
+                "inert against this backend: the intervention changed no outcome on "
+                "any item, so nothing could be measured rather than nothing being found"
+            )
+        else:
+            reason = decision.reason
         components.append(
             Component(
                 name=player.name,
                 description=player.description
                 if decision.established
-                else f"{player.description} - not established: {decision.reason}",
+                else f"{player.description} - not established: {reason}",
                 estimate=estimate,
                 verdict=decision.verdict,
                 adjusted_p=adjusted[index],

@@ -171,6 +171,21 @@ def test_blind_accuracy_is_shown_with_its_excess_over_chance() -> None:
     assert "not answering the question" in text
 
 
+def test_a_blind_score_whose_interval_includes_chance_is_not_asserted() -> None:
+    # A point estimate above chance with an interval straddling it is exactly
+    # the over-reading this tool objects to; the report must not commit it.
+    blind = Estimate(point=0.316, ci_low=0.244, ci_high=0.392, p_value=0.2, n=250, method="m")
+    text = "\n".join(render_blind(_report(blind=blind)))
+    assert "not answering the question" not in text
+    assert "interval includes chance" in text
+
+
+def test_a_blind_score_clearing_chance_is_asserted() -> None:
+    blind = Estimate(point=0.45, ci_low=0.39, ci_high=0.51, p_value=0.0001, n=250, method="m")
+    text = "\n".join(render_blind(_report(blind=blind)))
+    assert "not answering the question" in text
+
+
 def test_a_blind_score_at_chance_gets_no_accusation() -> None:
     blind = Estimate(point=0.255, ci_low=0.21, ci_high=0.30, p_value=0.9, n=250, method="m")
     text = "\n".join(render_blind(_report(blind=blind)))

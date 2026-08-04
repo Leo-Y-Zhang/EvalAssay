@@ -47,6 +47,26 @@ Three quantities can only understate:
   null. The correction is exact under the null and conservative away from it, so
   a large true skew is reported slightly smaller than it is.
 
+## An intervention that cannot bite against the local backend
+
+**Option permutation measures nothing when scoring by log-likelihood.** Each
+option is scored independently as a continuation of the same prompt, so the
+options are never presented to the model as a list and rotating them cannot
+change any option's score. The argmax lands on the same text whichever position
+it occupies.
+
+This is not a defect in the scorer — it is a genuine property, and arguably a
+desirable one: likelihood scoring is *structurally immune* to option-position
+effects. Positional preference is a phenomenon of prompted multiple choice,
+where the options appear as a labelled list, which is what the hosted-API
+backend does and what most published leaderboard numbers are produced by.
+
+The audit detects this and says so. An intervention whose presence changed no
+outcome on any item is reported as **inert against this backend**, not as "not
+established", because those mean different things: one is a measurement that
+came back small, the other is a measurement that could not be taken. Read a
+purity figure from the local backend as covering two artifacts, not three.
+
 ## What is not measured at all
 
 - **Training-data contamination.** The audit can detect sensitivity to exact

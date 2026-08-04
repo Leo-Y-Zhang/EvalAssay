@@ -19,10 +19,12 @@ calibration.
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
-from evalassay.audit import AuditConfig, run_audit
+from evalassay.audit import AuditConfig, inert_players, run_audit
 from evalassay.corpus.synthetic import CorpusSpec, generate
+from evalassay.intervene.interventions import NeutralReframing
 from evalassay.score.oracle import OracleScorer, OracleSpec
 from evalassay.types import AuditReport, Verdict
 
@@ -205,6 +207,41 @@ def test_calibration_two_artifacts_are_separated() -> None:
     # overlapping artifacts by hand would fail to guarantee.
     total = sum(c.estimate.point for c in report.components)
     assert total == pytest.approx(report.total_drop, abs=1e-12)
+
+
+# --------------------------------------------------------------------------
+# Interventions that cannot bite against a given backend
+# --------------------------------------------------------------------------
+
+
+def test_an_intervention_that_changes_nothing_is_identified_as_inert() -> None:
+    outcomes = np.zeros((8, 5))
+    outcomes[0] = [1, 1, 0, 0, 1]
+    for mask in range(8):
+        # Player 0 (bit 1) never changes anything; player 1 (bit 2) does.
+        outcomes[mask] = outcomes[0] - (0.5 if mask & 0b010 else 0.0)
+    assert inert_players(outcomes, 3) == {0, 2}
+
+
+def test_a_player_that_moves_one_item_is_not_inert() -> None:
+    outcomes = np.ones((8, 4))
+    outcomes[0b001, 2] = 0.0
+    assert 0 not in inert_players(outcomes, 3)
+
+
+def test_an_inert_intervention_says_so_rather_than_not_established() -> None:
+    # Reporting "not established" would read as measured-and-too-small, when the
+    # truth is that nothing could be measured at all.
+    corpus = generate(_uniform())
+    report = run_audit(
+        corpus,
+        OracleScorer(OracleSpec(skill=0.5, seed=1), corpus),
+        AuditConfig(seed=7, run_pathology_layer=False, measure_blind=False),
+        players=(NeutralReframing(),),
+    )
+    component = report.components[0]
+    assert component.verdict is Verdict.NOT_ESTABLISHED
+    assert "inert against this backend" in component.description
 
 
 # --------------------------------------------------------------------------

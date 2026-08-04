@@ -154,9 +154,18 @@ def render_blind(report: AuditReport) -> list[str]:
         f"[{blind.ci_low:.4f}, {blind.ci_high:.4f}]",
         f"  {'above chance by':<26}{excess:>9.4f}",
     ]
-    if excess > BLIND_EXCESS_TO_REMARK_ON:
+
+    # The interpretation is only stated when the interval clears chance. A point
+    # estimate above chance with an interval straddling it is exactly the
+    # over-reading this tool objects to, and printing the sentence anyway would
+    # have the report commit the error it exists to detect.
+    clears_chance = blind.ci_low > report.chance_accuracy
+    if clears_chance and excess > BLIND_EXCESS_TO_REMARK_ON:
         lines.append("  On those items the model is not answering the question, because there")
         lines.append("  is no question. This is a floor, not part of the decomposition.")
+    elif excess > BLIND_EXCESS_TO_REMARK_ON:
+        lines.append("  The interval includes chance, so this is not established: the model")
+        lines.append("  may or may not be scoring above chance without the question.")
     return lines
 
 
