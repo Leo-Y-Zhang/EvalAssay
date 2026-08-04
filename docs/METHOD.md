@@ -113,6 +113,25 @@ sampling one placement. Sampling would leave positional noise in the estimate
 that the audit would then have to separate from positional preference — the very
 thing it is measuring.
 
+### Why these three, and what was left out
+
+The set is small on purpose. Each additional player doubles the coalition
+lattice and therefore the number of model calls, so a player has to earn its
+place by isolating a distinct way a score can be inflated. These were considered
+and rejected:
+
+| Candidate | Why not |
+|---|---|
+| Hiding the question | Removes capability, not an artifact. Measured separately as a floor - see below. |
+| *Adding* a distractor rather than replacing one | Changes the option count, so accuracy falls mechanically even for a uniform guesser and the audit would charge that arithmetic to the model. |
+| Model-generated paraphrase | Would detect far more memorisation than the current reframing, but makes the intervention non-deterministic and puts an unverified claim - that meaning was preserved - underneath every number in the report. |
+| Shuffling options rather than rotating | Disturbs the author's intended ordering as well as absolute position, so it would measure two things at once. |
+| Truncating or simplifying the question | Not meaning-preserving, so a drop could not be attributed to an artifact rather than to the question having changed. |
+| Relabelling options (A-D to 1-4) | A reasonable future player, but it can only bite under labelled scoring, so it would be inert against the default backend and measure nothing for most users. |
+
+The three that remain each isolate one mechanism, preserve the option count and
+therefore chance accuracy, and are deterministic given the run seed.
+
 ### Why hiding the question is *not* a player
 
 Removing the question destroys the accuracy that *needed* the question. That is
