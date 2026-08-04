@@ -1,6 +1,23 @@
 # SESSION HANDOFF
 
-## STATUS: v1 COMPLETE
+## STATUS: v1 COMPLETE AND PUBLIC. A model-size sweep is running.
+
+The repository was made public on 2026-08-04 with the owner's authorisation,
+after a full-history scan: no secrets across 39 commits, no machine paths, no
+personal identifiers, no other repo names, correct identity on author and
+committer throughout.
+
+**IN FLIGHT:** `runs/size/_size.log`, printing SIZE_ALLDONE when done. Three
+models - SmolLM2-135M, Qwen2.5-0.5B, Qwen2.5-1.5B - on ARC-Easy, 250 items,
+seed 7, under both scoring styles. The question is whether presentation
+dependence shrinks as models get larger. All three are re-run under current code
+rather than reusing last night's 0.5B numbers, because the tie-break changed and
+a cross-model comparison should come from one version.
+
+Write each model's pair up as it lands:
+`python -m evalassay.cli compare runs/size/<name>-cloze.json runs/size/<name>-labelled.json`
+
+## v1, for reference
 
 All six audits finished, all findings written up, `python verify.py` green on all
 ten checks, continuous integration green, tree committed and pushed.
