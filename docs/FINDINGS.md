@@ -373,8 +373,8 @@ ranking problem.
 | Model | `cloze` | `labelled` | gap |
 |---|---|---|---|
 | SmolLM2-135M-Instruct | 0.5360 | 0.2840 | **-0.2520** |
-| Qwen2.5-0.5B-Instruct | 0.5520 | 0.7440 | **+0.1920** |
-| **distance between them** | **0.0160** | **0.4600** | |
+| Qwen2.5-0.5B-Instruct | 0.5520 | **0.7480** | **+0.1960** |
+| **distance between them** | **0.0160** | **0.4640** | |
 
 Same 250 ARC-Easy items, same seed, same thresholds, identical corpus hash on
 every run.
@@ -427,14 +427,29 @@ less exploitable, and the audit cannot separate those two. So the share is *not*
 reported as "accuracy that came from weak distractors", which is the claim a
 reader would most like to make and the one the measurement does not support.
 
-### A caveat on the 0.5B numbers in that table
+### What the tie-break change actually moved: one item
 
-They come from the previous night's runs, made before tie-breaking was changed
-to be order-invariant. The change cannot have affected the continuation run,
-where permutation was reported fully inert with a minimum detectable effect of
-exactly zero, meaning no item's outcome moved at all. The labelled run is not
-guaranteed untouched, so both are being re-run under current code and this
-section will be corrected if they move.
+Tie-breaking was made order-invariant after these runs began, so the 0.5B
+figures were checked rather than assumed.
+
+**Labelled was re-run under current code and moved from 0.7440 to 0.7480** - one
+item in 250. The table uses the newer figure.
+
+**Continuation was not re-run, and does not need to be.** Ties are the only route
+by which that change can alter a result, and the original run reported the
+permutation intervention as *fully inert*, with a minimum detectable effect of
+exactly zero. That means no item's outcome moved under any rotation, which is
+only possible if no tie ever decided an answer. The figure is therefore already
+the one current code produces.
+
+### What was not measured
+
+**Qwen2.5-1.5B was never audited.** It needed more free memory than the machine
+had, and the audit declined to start rather than force the machine into
+swapping. So the sign change is established between two models roughly four
+times apart in size, and **nothing here says where it turns over, whether it
+continues, or how it behaves at the scales people actually publish leaderboards
+for.** A third point would need a machine with more headroom, not more time.
 
 ---
 

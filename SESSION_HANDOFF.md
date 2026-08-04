@@ -1,21 +1,49 @@
 # SESSION HANDOFF
 
-## STATUS: v1 COMPLETE AND PUBLIC. A model-size sweep is running.
+## STATUS: COMPLETE AND PUBLIC. Nothing running, nothing outstanding.
 
-The repository was made public on 2026-08-04 with the owner's authorisation,
-after a full-history scan: no secrets across 39 commits, no machine paths, no
-personal identifiers, no other repo names, correct identity on author and
-committer throughout.
+Public at `Leo-Y-Zhang/EvalAssay` since 2026-08-04, on the owner's explicit
+authorisation, after a full-history scan: no secrets across the commit history,
+no machine paths, no personal identifiers, no other repo names, correct identity
+on author and committer throughout.
 
-**IN FLIGHT:** `runs/size/_size.log`, printing SIZE_ALLDONE when done. Three
-models - SmolLM2-135M, Qwen2.5-0.5B, Qwen2.5-1.5B - on ARC-Easy, 250 items,
-seed 7, under both scoring styles. The question is whether presentation
-dependence shrinks as models get larger. All three are re-run under current code
-rather than reusing last night's 0.5B numbers, because the tie-break changed and
-a cross-model comparison should come from one version.
+Gate: `python verify.py` - eleven checks, including a calibration sweep and a
+type check against the platform continuous integration runs on.
 
-Write each model's pair up as it lands:
-`python -m evalassay.cli compare runs/size/<name>-cloze.json runs/size/<name>-labelled.json`
+## What is measured, and what is not
+
+Nine audits in total: three benchmarks under two scoring styles with
+Qwen2.5-0.5B, plus SmolLM2-135M on ARC-Easy under both. All write-ups are in
+`docs/FINDINGS.md` with reproduce commands; the JSON reports are in `runs/`,
+which is untracked.
+
+**The sharpest finding:** SmolLM2-135M and Qwen2.5-0.5B are 1.6 points apart on
+the same 250 ARC-Easy items when scored by continuation, and 46.4 points apart
+when presented as labelled multiple choice. The presentation gap changes sign
+with model size rather than shrinking.
+
+**Deliberately not measured:** Qwen2.5-1.5B. It needed more free memory than the
+machine had and the audit refused to start rather than force swapping. A third
+size point needs a machine with more headroom, not more time. The findings say
+so rather than implying the sweep was complete.
+
+**Not re-run, and does not need to be:** the 0.5B continuation figure predates
+the order-invariant tie-break. Ties are the only route by which that change can
+move a result, and that run reported permutation fully inert with a minimum
+detectable effect of exactly zero - no item's outcome moved under any rotation,
+which is only possible if no tie decided an answer.
+
+## If you pick this up again
+
+The obvious next pieces, in order of value:
+
+1. **A third model size**, on a machine with more memory. The sign change is the
+   most interesting result here and rests on two points.
+2. **A larger MMLU sample.** The position prediction could not be tested at 250
+   items: the key skew is 0.0180 while the detector's minimum detectable effect
+   at that size is 0.0677. About 2,400 items would settle it.
+3. **A stronger choices-only probe.** The current one is naive Bayes and its
+   result is explicitly a lower bound.
 
 ## v1, for reference
 

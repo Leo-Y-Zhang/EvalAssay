@@ -49,8 +49,8 @@ ranking.
 | Model | `cloze` | `labelled` |
 |---|---|---|
 | SmolLM2-135M | 0.5360 | 0.2840 |
-| Qwen2.5-0.5B | 0.5520 | 0.7440 |
-| **distance apart** | **1.6 points** | **46.0 points** |
+| Qwen2.5-0.5B | 0.5520 | 0.7480 |
+| **distance apart** | **1.6 points** | **46.4 points** |
 
 Same 250 ARC-Easy items, same seed, identical corpus hash on every run. Scored
 by continuation, these two models are effectively tied. Presented as labelled
@@ -65,6 +65,11 @@ recovers to within two points of a model four times its size — but because it
 cannot work the format. So the format under-reports models that cannot follow it
 and rewards models that can exploit it, and those two errors point in opposite
 directions.
+
+Measured on two models roughly four times apart in size. A larger model was not
+audited — it needed more memory than the machine had, and the audit declined to
+start rather than force it — so nothing here says where the sign change turns
+over or whether it continues.
 
 That run also produced the first artifact the decomposition has ever charged
 against a real model: **7.4 points of the 135M's continuation score did not
