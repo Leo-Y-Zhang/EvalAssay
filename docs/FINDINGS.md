@@ -215,23 +215,28 @@ Neither number is the right one. The point is that a benchmark score is not a
 property of a model alone; it is a property of a model and a presentation, and
 the presentation is rarely stated alongside the score.
 
-### The same effect on a second benchmark
+### The same effect on three benchmarks
 
-ARC-Challenge, audited identically, gives the same answer:
+All three corpora were audited identically, changing only the presentation:
 
 | Corpus | `cloze` | `labelled` | difference |
 |---|---|---|---|
 | ARC-Easy | 0.5520 | 0.7440 | **+0.1920** |
 | ARC-Challenge | 0.3720 | 0.5600 | **+0.1880** |
+| MMLU | 0.3120 | 0.4200 | **+0.1080** |
 
-Two benchmarks of different difficulty, nineteen points apiece. A single such
-result would be a curiosity; replicated on an independent corpus at nearly the
-same magnitude, it is a property of how this model is asked rather than an
-accident of one item set.
+Three benchmarks, three positive gaps, between eleven and nineteen points. A
+single such result would be a curiosity; the same sign and comparable magnitude
+on three independent corpora make it a property of how this model is asked
+rather than an accident of one item set.
 
-### Presentation does not only raise the score, it creates the blind signal
+The magnitude is not constant, and it should not be reported as though it were.
+MMLU's gap is roughly half ARC's. What can be said is that the direction held
+everywhere and the smallest gap was still eleven points.
 
-Blind accuracy - the score with the question removed entirely - across all four
+### Every question-independent result belongs to a labelled run
+
+Blind accuracy - the score with the question removed entirely - across all six
 runs:
 
 | Run | Blind accuracy | 99% interval | Chance | Verdict |
@@ -240,16 +245,26 @@ runs:
 | ARC-Easy, `labelled` | 0.3240 | [0.2480, 0.4000] | 0.2498 | not established |
 | ARC-Challenge, `cloze` | 0.2240 | [0.1560, 0.2920] | 0.2508 | not established |
 | ARC-Challenge, `labelled` | **0.3480** | [0.2680, 0.4240] | 0.2508 | **established** |
+| MMLU, `cloze` | 0.2600 | [0.1880, 0.3320] | 0.2500 | not established |
+| MMLU, `labelled` | **0.3720** | [0.2920, 0.4480] | 0.2500 | **established** |
 
-The only run where the model demonstrably beats chance without a question is a
-labelled one. Under `cloze` on ARC-Challenge it scores 0.2240, *below* chance.
+**Both runs in which the model demonstrably beats chance without a question are
+labelled runs. No continuation-scored run clears chance on any corpus** - the
+three sit at 0.3160, 0.2240 and 0.2600 against floors near 0.25, one of them
+below chance.
 
-That difference has a mechanism rather than being a curiosity. Under `cloze`
-each option is scored alone against a prompt that contains no question and no
-other option, so there is nothing to compare and nothing to exploit. Under
-`labelled` all the options appear together, and a model can pick the one that
-looks most like an answer. **The presentation does not merely inflate the score;
-it manufactures the part of the score that does not need the question.**
+There is a mechanism rather than a coincidence. Under `cloze` each option is
+scored alone against a prompt containing no question and no other option, so
+there is nothing to compare and nothing to exploit. Under `labelled` the options
+appear together and a model can pick whichever most resembles an answer.
+**Presentation does not merely inflate a score; it manufactures the part of the
+score that does not need the question.**
+
+The size of that effect is not uniform either. On ARC-Challenge and MMLU the
+blind score is 12.4 and 11.2 points higher under labelled presentation; on
+ARC-Easy the two are within a point of each other. So the clean claim is the one
+about the verdicts - every established question-independent result is a labelled
+one - not a claim of a constant gap.
 
 ### The decomposition charged nothing, and that is a limitation worth naming
 
