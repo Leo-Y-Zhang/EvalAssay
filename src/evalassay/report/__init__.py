@@ -8,14 +8,26 @@ their own without re-running anything.
 
 from __future__ import annotations
 
+from evalassay.report.compare import (
+    Comparison,
+    NotComparableError,
+    compare,
+    render_comparison,
+)
 from evalassay.report.render import render, render_blind, render_decomposition, render_findings
-from evalassay.report.serialise import report_to_dict, to_json
+from evalassay.report.serialise import from_json, report_from_dict, report_to_dict, to_json
 
 __all__ = [
+    "Comparison",
+    "NotComparableError",
+    "compare",
+    "from_json",
     "render",
     "render_blind",
+    "render_comparison",
     "render_decomposition",
     "render_findings",
+    "report_from_dict",
     "report_to_dict",
     "to_json",
 ]

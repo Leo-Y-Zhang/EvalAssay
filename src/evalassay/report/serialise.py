@@ -18,7 +18,14 @@ import json
 import math
 from typing import Any
 
-from evalassay.types import AuditReport, Component, Estimate, Finding, RunManifest
+from evalassay.types import (
+    AuditReport,
+    Component,
+    Estimate,
+    Finding,
+    RunManifest,
+    Verdict,
+)
 
 
 def _number(value: float) -> float | None:
@@ -163,3 +170,129 @@ def to_json(report: AuditReport, *, indent: int = 2) -> str:
         sort_keys=True,
         ensure_ascii=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# Reading a report back
+# ---------------------------------------------------------------------------
+#
+# The inverse of the writers above, so a saved report can be re-opened and
+# compared against another without re-running the audit. Keeping the pair
+# exercised by a round-trip test also proves the JSON is lossless, which is what
+# entitles the format to be called machine-readable rather than merely printable.
+
+
+def _float(value: object) -> float:
+    """Read a number that may have been written as null.
+
+    Args:
+        value: The serialised value.
+
+    Returns:
+        The number, or ``nan`` where it was undefined.
+    """
+    return math.nan if value is None else float(value)  # type: ignore[arg-type]
+
+
+def estimate_from_dict(data: dict[str, Any]) -> Estimate:
+    """Rebuild an estimate.
+
+    Args:
+        data: A serialised estimate.
+
+    Returns:
+        The estimate.
+    """
+    return Estimate(
+        point=_float(data["point"]),
+        ci_low=_float(data["ci_low"]),
+        ci_high=_float(data["ci_high"]),
+        p_value=_float(data["p_value"]),
+        n=int(data["n"]),
+        method=str(data["method"]),
+    )
+
+
+def manifest_from_dict(data: dict[str, Any]) -> RunManifest:
+    """Rebuild a run manifest.
+
+    Args:
+        data: A serialised manifest.
+
+    Returns:
+        The manifest.
+    """
+    return RunManifest(
+        schema_version=str(data["schema_version"]),
+        corpus_name=str(data["corpus_name"]),
+        corpus_hash=str(data["corpus_hash"]),
+        n_items=int(data["n_items"]),
+        scorer_id=str(data["scorer_id"]),
+        scorer_deterministic=bool(data["scorer_deterministic"]),
+        config_hash=str(data["config_hash"]),
+        seed=int(data["seed"]),
+        alpha=float(data["alpha"]),
+        power=float(data["power"]),
+        bootstrap_draws=int(data["bootstrap_draws"]),
+        evalassay_version=str(data["evalassay_version"]),
+        library_versions=tuple(
+            sorted((str(k), str(v)) for k, v in data["library_versions"].items())
+        ),
+    )
+
+
+def report_from_dict(data: dict[str, Any]) -> AuditReport:
+    """Rebuild a whole audit from its serialised form.
+
+    Args:
+        data: A serialised report.
+
+    Returns:
+        The report.
+    """
+    components = tuple(
+        Component(
+            name=str(c["name"]),
+            description=str(c["description"]),
+            estimate=estimate_from_dict(c["estimate"]),
+            verdict=Verdict(c["verdict"]),
+            adjusted_p=_float(c["adjusted_p"]),
+            mde=_float(c["minimum_detectable_effect"]),
+        )
+        for c in data["components"]
+    )
+    findings = tuple(
+        Finding(
+            detector=str(f["detector"]),
+            description=str(f["description"]),
+            estimate=estimate_from_dict(f["estimate"]),
+            verdict=Verdict(f["verdict"]),
+            adjusted_p=_float(f["adjusted_p"]),
+            mde=_float(f["minimum_detectable_effect"]),
+            detail=str(f["detail"]),
+        )
+        for f in data["findings"]
+    )
+    blind = data.get("blind_accuracy")
+    return AuditReport(
+        manifest=manifest_from_dict(data["manifest"]),
+        reported_score=_float(data["reported_score"]),
+        total_drop=_float(data["total_drop"]),
+        components=components,
+        findings=findings,
+        chance_accuracy=_float(data["chance_accuracy"]),
+        blind_accuracy=estimate_from_dict(blind) if blind else None,
+    )
+
+
+def from_json(text: str) -> AuditReport:
+    """Rebuild an audit from JSON text.
+
+    Args:
+        text: Serialised report.
+
+    Returns:
+        The report.
+    """
+    parsed: dict[str, Any] = json.loads(text)
+    return report_from_dict(parsed)

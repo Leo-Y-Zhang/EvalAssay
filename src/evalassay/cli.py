@@ -17,6 +17,10 @@ Four subcommands, in the order someone new to the tool would want them:
 
 ``audit``
     The real thing: decompose a model's score on a corpus.
+
+``compare``
+    Difference two saved audits, refusing when their manifests disagree about
+    anything that should have been held fixed.
 """
 
 from __future__ import annotations
@@ -41,8 +45,9 @@ from evalassay.corpus.loaders import (
 )
 from evalassay.corpus.synthetic import CorpusSpec, generate
 from evalassay.pathology.runner import run_all as run_pathology
+from evalassay.report.compare import compare, render_comparison
 from evalassay.report.render import RULE, render
-from evalassay.report.serialise import to_json
+from evalassay.report.serialise import from_json, to_json
 from evalassay.score.oracle import OracleScorer, OracleSpec
 from evalassay.stats.decision import GateConfig
 from evalassay.types import ItemSet, Verdict
@@ -230,6 +235,21 @@ def cmd_convert(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_compare(args: argparse.Namespace) -> int:
+    """Difference two saved audits of the same corpus.
+
+    Args:
+        args: Parsed arguments.
+
+    Returns:
+        Process exit code.
+    """
+    baseline = from_json(args.baseline.read_text(encoding="utf-8"))
+    variant = from_json(args.variant.read_text(encoding="utf-8"))
+    sys.stdout.write(render_comparison(compare(baseline, variant)))
+    return 0
+
+
 def cmd_audit(args: argparse.Namespace) -> int:
     """Decompose a model's score on a corpus.
 
@@ -305,6 +325,14 @@ def build_parser() -> argparse.ArgumentParser:
     convert.add_argument("output", type=Path)
     convert.add_argument("--format", choices=sorted(LOADERS), default="arc")
     convert.set_defaults(func=cmd_convert)
+
+    comparison = subparsers.add_parser(
+        "compare",
+        help="difference two saved audits of the same corpus, refusing if they disagree",
+    )
+    comparison.add_argument("baseline", type=Path, help="JSON report to subtract from")
+    comparison.add_argument("variant", type=Path, help="JSON report to compare against it")
+    comparison.set_defaults(func=cmd_compare)
 
     audit = subparsers.add_parser("audit", help="decompose a model's score on a corpus")
     audit.add_argument("corpus", type=Path)
