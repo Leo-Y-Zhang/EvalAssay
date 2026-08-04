@@ -1,42 +1,46 @@
 # SESSION HANDOFF
 
-## AUTONOMOUS OVERNIGHT MODE - ACTIVE
+## STATUS: v1 COMPLETE
 
-Building EvalAssay to a complete, recruiter-grade v1 without further input.
-Work continuously: increment -> gate -> commit targeted paths -> push -> next
-increment. Do not pause between increments.
+All six audits finished, all findings written up, `python verify.py` green on all
+ten checks, continuous integration green, tree committed and pushed.
 
-**NEXT ACTION:** the four ARC audits are DONE and written up. An MMLU pair is
-running (`runs/_mmlu.log`, prints MMLU_ALLDONE when finished). When it lands,
-add an MMLU section to `docs/FINDINGS.md` covering whether the position artifact
-is finally charged, then run `python verify.py` in full and close out.
+**Nothing is outstanding and nothing is running.** If you are resuming, there is
+no work in flight to recover.
 
-MMLU is the run that matters most. Its answer key is skewed, which is the
-condition under which a positional preference becomes a real artifact rather
-than a wash - so it tests the confirming half of a prediction the calibration
-made and that ARC could only test negatively.
+**The one thing needing the owner:** the repository is PRIVATE. It is born clean
+- no machine paths, no personal identifiers, no other project names, no agent
+files tracked, correct identity on author and committer, no AI trailers - so it
+can be made public as-is with no history rewrite. That decision is the owner's
+and was deliberately not made here.
 
-**Banked and written up already - do not re-derive** (all in `docs/FINDINGS.md`):
+**Known next change, deliberately not made:** tie-breaking hashes the whole
+ordered option list, so an exact tie can resolve differently after a rotation
+and the inert detection is slightly blunted under continuation scoring. Bounded
+by the runs at exactly zero on ARC-Easy and 0.0011 on ARC-Challenge. Keying the
+tie-break on the option's own text would remove it. It was not changed while
+runs were in flight, because altering scoring would have de-synced the findings
+from the code that produced them.
 
-- Model-free layer on MMLU test (14,042 items): all four detectors establish a
-  defect. Longest-option scores 28.3% against 25.0% chance; 105 items are exact
-  duplicates; key sits at position 3 for 26.8%; 1.4 points recoverable from
-  options alone. ARC-Easy and ARC-Challenge establish nothing, with MDEs given.
-- Presentation effect, replicated: ARC-Easy 0.5520 -> 0.7440 (+19.2 points) and
-  ARC-Challenge 0.3720 -> 0.5600 (+18.8), continuation scoring against labelled.
-- Blind accuracy across all four ARC runs; established only on ARC-Challenge
-  labelled at 0.3480 [0.2680, 0.4240] against chance 0.2508. Below chance under
-  continuation scoring, which is the evidence that presentation manufactures the
-  question-independent signal rather than merely revealing it.
-- Measured false-positive rate: 4 of 150 clean corpora fired some detector
-  (2.67%, nominal 1%); 0 of 60 charged an artifact against a clean model.
+## What was measured
 
-To relaunch a died run:
+Six audits: ARC-Easy, ARC-Challenge and MMLU, each under both scoring styles,
+250 items apiece, Qwen2.5-0.5B-Instruct, seed 7. Reports in `runs/` (untracked),
+write-up in `docs/FINDINGS.md`.
 
-    python -m evalassay.cli audit data/<corpus>.jsonl       --model Qwen/Qwen2.5-0.5B-Instruct --style <cloze|labelled>       --items 250 --seed 7 --json runs/<tag>.json > runs/<tag>.txt
-
-Each ARC run takes 40 to 75 minutes on CPU and MMLU longer. `data/*.jsonl`
-exists and the model is in the local cache; nothing needs downloading.
+- **MMLU has all four benchmark defects**, measured with no model on the full
+  14,042-item split: longest-option scores 28.3% against 25.0% chance, 105 items
+  are exact duplicates, the key sits at position 3 for 26.8%, and 1.4 points are
+  recoverable from the options alone. ARC establishes none, with MDEs given.
+- **Presentation is worth 11 to 19 points** on every corpus tested.
+- **Every question-independent result is a labelled run.** Both runs beating
+  chance with no question are labelled; no continuation-scored run clears chance.
+- **On MMLU the question adds 4.8 points, paired p 0.20** - not distinguished
+  from zero at this sample size.
+- **Measured false-positive rate:** 4 of 150 clean corpora, against a nominal 1%.
+- **The position prediction could not be tested at n=250** and the reason is
+  quantified: MMLU's key skew is 0.0180 while the sample gives the detector an
+  MDE of 0.0677. Settling it needs about 2,400 items.
 
 ## The gate (must be green before every commit)
 

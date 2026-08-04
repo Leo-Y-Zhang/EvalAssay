@@ -319,9 +319,11 @@ yourself, under whatever licence they carry.
 | Scorers: oracle, local log-likelihood, hosted API | tested |
 | Text and JSON reporting, run manifest, `assay` CLI | tested |
 | Lossless JSON round-trip and manifest-checked comparison | tested |
+| Measured findings on three benchmarks | [docs/FINDINGS.md](docs/FINDINGS.md) |
 
 Gate on every commit: `ruff check`, `ruff format --check`, `mypy` (strict, over
-source *and* tests), `pytest`, and the calibration sweep.
+source *and* tests), `pytest`, and the calibration sweep. `python verify.py`
+runs all ten checks and currently passes all ten.
 
 ## What it does not do
 
