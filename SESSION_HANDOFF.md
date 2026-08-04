@@ -10,9 +10,21 @@ increment. Do not pause between increments.
 (`_audit.log` prints ALLDONE when finished). When they land, add a model-side
 section to `docs/FINDINGS.md` and update the README's status table.
 
-The four runs are two benchmarks crossed with two scoring styles, because the
-comparison is itself the finding: option permutation cannot measure anything
-under `cloze` scoring and can under `labelled`.
+Six runs in total: ARC-Easy and ARC-Challenge crossed with two scoring styles,
+then an MMLU pair chained behind them (`runs/_mmlu.log`, waits for ALLDONE in
+`runs/_audit.log` before starting so the two loops do not compete).
+
+The comparison is itself the finding. Option permutation cannot measure anything
+under `cloze` scoring and can under `labelled`; and MMLU is included because its
+answer key is skewed, which is the condition under which a positional preference
+turns into a real artifact. ARC-Easy's key is uniform, and there the audit
+correctly charges nothing for position even though the model demonstrably moves
+its answer when the options are rotated.
+
+**Banked so far** - arc-easy, 250 items, seed 7: reported 0.5520 under `cloze`
+and 0.7440 under `labelled`, a 19.2 point swing from presentation alone. Neither
+run charged any artifact. Blind accuracy 0.3240 [0.2480, 0.4000], correctly
+reported as not established because the interval includes chance.
 
     for BENCH in arc-easy arc-challenge; do for STYLE in labelled cloze; do
       python -m evalassay.cli audit "data/$BENCH.jsonl"         --model Qwen/Qwen2.5-0.5B-Instruct --style "$STYLE"         --items 250 --seed 7 --json "runs/$BENCH-$STYLE.json"         > "runs/$BENCH-$STYLE.txt" 2>"runs/$BENCH-$STYLE.err"
