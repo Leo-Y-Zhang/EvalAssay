@@ -20,6 +20,7 @@ from evalassay.corpus.canonical import (
 )
 from evalassay.corpus.loaders import (
     load_arc_jsonl,
+    load_arc_parquet,
     load_hellaswag_jsonl,
     load_mmlu_csv,
     load_mmlu_directory,
@@ -45,6 +46,7 @@ __all__ = [
     "generate",
     "item_to_record",
     "load_arc_jsonl",
+    "load_arc_parquet",
     "load_hellaswag_jsonl",
     "load_mmlu_csv",
     "load_mmlu_directory",

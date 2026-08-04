@@ -311,3 +311,52 @@ def load_truthfulqa_mc_jsonl(path: Path) -> ItemSet:
         )
 
     return ItemSet(name=f"truthfulqa:{path.stem}", items=tuple(items))
+
+
+def load_arc_parquet(path: Path) -> ItemSet:
+    """Load ARC from the parquet form the dataset hub distributes.
+
+    The parquet layout nests the options as a struct of parallel ``text`` and
+    ``label`` arrays rather than as a list of objects, so it needs its own
+    reader even though the content is identical to the JSON Lines form.
+
+    Args:
+        path: The parquet file.
+
+    Returns:
+        The corpus.
+
+    Raises:
+        ImportError: If pandas is unavailable.
+        ValueError: If a row's answer key is not among its own labels. Rows are
+            never skipped: dropping them would change the denominator of every
+            accuracy computed downstream without saying so.
+    """
+    try:
+        import pandas as pd  # noqa: PLC0415 - optional dependency, imported on demand
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise ImportError(
+            "reading parquet needs pandas; install it or use the JSON Lines loader"
+        ) from exc
+
+    frame = pd.read_parquet(path)
+    items: list[Item] = []
+    for position, row in enumerate(frame.itertuples(index=False), start=1):
+        where = f"{path.name}:row {position}"
+        choices = row.choices
+        texts = [str(text) for text in choices["text"]]
+        labels = [str(label) for label in choices["label"]]
+        key = str(row.answerKey)
+
+        answer_index = labels.index(key) if key in labels else _answer_index(key, len(texts), where)
+
+        items.append(
+            Item(
+                item_id=str(row.id),
+                question=str(row.question),
+                choices=tuple(texts),
+                answer_index=answer_index,
+            )
+        )
+
+    return ItemSet(name=f"arc:{path.parent.name}", items=tuple(items))

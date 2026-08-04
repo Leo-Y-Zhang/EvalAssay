@@ -82,7 +82,7 @@ disallow_any_generics = true
 
 [[tool.mypy.overrides]]
 # These ship no type information; the boundary is wrapped in our own typed code.
-module = ["scipy.*", "sklearn.*", "torch.*", "transformers.*", "anthropic.*"]
+module = ["scipy.*", "sklearn.*", "torch.*", "transformers.*", "anthropic.*", "pandas.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------

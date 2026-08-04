@@ -6,9 +6,12 @@ Building EvalAssay to a complete, recruiter-grade v1 without further input.
 Work continuously: increment -> gate -> commit targeted paths -> push -> next
 increment. Do not pause between increments.
 
-**NEXT ACTION:** build `src/evalassay/report/` (text table + machine-readable
-JSON + run manifest serialisation) and `src/evalassay/cli.py` (the `assay`
-entry point), then run the real audit against ARC and write up the findings.
+**NEXT ACTION:** the real audits are running in the background against ARC-Easy
+and ARC-Challenge with Qwen2.5-0.5B-Instruct, writing to `runs/`. When they
+finish: read the reports, write `docs/FINDINGS.md` and `docs/METHOD.md`, and
+rewrite the README around the measured numbers. If the runs died, relaunch with
+`python -m evalassay.cli audit data/arc-easy.jsonl --model Qwen/Qwen2.5-0.5B-Instruct
+--items 250 --seed 7 --json runs/arc-easy.json`.
 
 ## The gate (must be green before every commit)
 
@@ -49,8 +52,9 @@ survives the audit.
 7. [DONE] Calibration harness (`tests/test_audit.py`, marked slow, run by CI):
    planted artifacts are recovered inside the audit's own intervals, and
    nothing is charged against a clean model or an inert guesser.
-8. [NEXT] Reporting, run manifest serialisation, CLI, and the measured findings
-   against a real benchmark.
+8. [DONE] Reporting (text + JSON), run manifest serialisation, and the `assay`
+   CLI with a `demo` subcommand that needs no model, dataset or network.
+9. [NEXT] The measured findings against a real benchmark, and the write-up.
 
 ## Design decisions already settled - do not relitigate
 
@@ -90,7 +94,7 @@ survives the audit.
 - **THREE Shapley players, not four. Hiding the question is NOT one of them.**
   The game attributes inflation, so every player must remove an artifact.
   Removing the question destroys the accuracy that *needed* the question, which
-  is capability; charging it would inverpt the meaning of the report. Blind
+  is capability; charging it would invert the meaning of the report. Blind
   accuracy is measured separately and reported as a floor.
 - **Positional preference is only an artifact on a skewed benchmark.** A model
   that always answers position one scores exactly chance with or without
