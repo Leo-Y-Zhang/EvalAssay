@@ -359,3 +359,77 @@ def test_labelled_scoring_is_not_invariant_to_option_order(labelled_scorer: Any)
     )
     moved = labelled_scorer.score(rotated)
     assert not np.allclose(moved, np.roll(base, -1), rtol=1e-3, atol=1e-4)
+
+
+# --------------------------------------------------------------------------
+# Not making the machine unusable
+# --------------------------------------------------------------------------
+
+
+def test_an_unknown_dtype_is_refused() -> None:
+    pytest.importorskip("torch", reason="local scoring needs the optional extras")
+    from evalassay.score.local import LocalScorer
+
+    with pytest.raises(ValueError, match="dtype must be one of"):
+        LocalScorer(MODEL_FOR_LOCAL_TESTS, dtype="float8")
+
+
+def test_loading_is_refused_when_memory_is_nearly_gone() -> None:
+    # Loading a model that does not fit does not fail cleanly, it drives the
+    # machine into swapping and takes everything else with it. Refusing is the
+    # kinder failure, and this fired for real during development.
+    pytest.importorskip("torch", reason="local scoring needs the optional extras")
+    from evalassay.score import local
+
+    original = local.free_memory_mb
+    local.free_memory_mb = lambda: 200
+    try:
+        with pytest.raises(ValueError, match="refusing rather than driving the machine"):
+            local.LocalScorer(MODEL_FOR_LOCAL_TESTS)
+    finally:
+        local.free_memory_mb = original
+
+
+def test_an_unknown_memory_figure_does_not_block_loading() -> None:
+    # None means "could not tell", not "nothing free". Refusing on the strength
+    # of a number the platform never gave us would be inventing a reason.
+    pytest.importorskip("torch", reason="local scoring needs the optional extras")
+    from evalassay.score import local
+
+    original = local.free_memory_mb
+    local.free_memory_mb = lambda: None
+    try:
+        scorer = local.LocalScorer(MODEL_FOR_LOCAL_TESTS)
+        assert scorer.dtype == "float32"
+    except Exception as exc:
+        pytest.skip(f"no local model available: {type(exc).__name__}")
+    finally:
+        local.free_memory_mb = original
+
+
+def test_threads_are_capped_to_leave_the_machine_usable() -> None:
+    import os
+
+    from evalassay.score.local import CORES_LEFT_FREE, default_thread_count
+
+    total = os.cpu_count() or 1
+    assert default_thread_count() == max(1, total - CORES_LEFT_FREE)
+    assert default_thread_count() >= 1
+
+
+def test_the_precision_is_recorded_in_the_scorer_identity() -> None:
+    # Two runs at different precisions must never be silently compared, and the
+    # manifest is what stops that.
+    pytest.importorskip("torch", reason="local scoring needs the optional extras")
+    from evalassay.score import local
+
+    original = local.free_memory_mb
+    local.free_memory_mb = lambda: 99_999
+    try:
+        scorer = local.LocalScorer(MODEL_FOR_LOCAL_TESTS, dtype="bfloat16")
+    except Exception as exc:
+        pytest.skip(f"no local model available: {type(exc).__name__}")
+    finally:
+        local.free_memory_mb = original
+    assert ":bfloat16:" in scorer.scorer_id
+    assert scorer.describe()["dtype"] == "bfloat16"

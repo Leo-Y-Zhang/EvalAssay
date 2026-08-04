@@ -154,6 +154,26 @@ established artifact says a measurement was inflated. It says nothing about the
 competence, honesty or conduct of anyone who built the benchmark or the model.
 Benchmarks acquire defects through ordinary drift and ordinary deadlines.
 
+## Running it without taking the machine down
+
+Auditing is CPU-bound and memory-hungry, and it is usually run on a machine that
+is doing other things.
+
+- **Threads are capped by default**, leaving four processors free. Torch will
+  otherwise take every core, which is the difference between a slow audit and an
+  unusable desktop. Override with `--threads`.
+- **Loading is refused below a memory floor.** A model that does not fit does
+  not fail cleanly; it drives the machine into swapping and takes every other
+  process with it. The check fired for real during development, when an
+  unrelated local inference server was holding half of this machine's memory.
+- **`--dtype bfloat16` halves what the weights occupy**, which can be the
+  difference between a larger model fitting alongside other work and not fitting
+  at all. Precision is recorded in the scorer identity, so two runs at different
+  precisions can never be silently compared.
+
+None of this makes an audit fast. It makes an audit a considerate neighbour,
+which matters more when the alternative is losing whatever else was running.
+
 ## Known gaps, stated plainly
 
 - The reframing intervention is the weakest of the three and would benefit most

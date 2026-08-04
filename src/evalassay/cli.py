@@ -353,6 +353,26 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     audit.add_argument(
+        "--dtype",
+        choices=["float32", "bfloat16", "float16"],
+        default="float32",
+        help=(
+            "weight precision. 'bfloat16' halves the memory a model occupies, which "
+            "can be the difference between a large model fitting alongside other work "
+            "and not fitting at all. Recorded in the scorer identity, so runs at "
+            "different precisions can never be silently compared"
+        ),
+    )
+    audit.add_argument(
+        "--threads",
+        type=int,
+        default=None,
+        help=(
+            "torch thread count. Defaults to leaving four processors free so the "
+            "machine stays usable while an audit runs"
+        ),
+    )
+    audit.add_argument(
         "--unnormalised",
         action="store_true",
         help="sum option log-likelihood instead of averaging it, which prefers short options",

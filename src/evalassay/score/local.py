@@ -21,6 +21,8 @@ one into the scorer would be self-defeating.
 
 from __future__ import annotations
 
+import ctypes
+import os
 from typing import Any, Final
 
 import numpy as np
@@ -49,6 +51,34 @@ CLOZE: Final = "cloze"
 LABELLED: Final = "labelled"
 """Present the options as a labelled list and score the label tokens."""
 
+DTYPES: Final = ("float32", "bfloat16", "float16")
+"""Weight precisions this backend will load.
+
+``float32`` is the default because it is what every CPU supports well and it is
+the least surprising. ``bfloat16`` halves the memory a model occupies, which is
+the difference between a 1.5 billion parameter model fitting alongside other
+work and not fitting at all. Precision is recorded in the scorer identity, so
+two runs at different precisions can never be silently compared.
+"""
+
+MEMORY_FLOOR_MB: Final = 1500
+"""Refuse to load a model when less free memory than this remains.
+
+Loading a model that does not fit does not fail cleanly - it drives the machine
+into swapping and takes every other process down with it. This tool is often run
+on a laptop that is doing other things, so it checks before it allocates rather
+than discovering the problem by making the machine unusable.
+"""
+
+CORES_LEFT_FREE: Final = 4
+"""Logical processors deliberately not used, so the machine stays responsive.
+
+Scoring is embarrassingly parallel and torch will take every core it is given.
+On a machine doing other work that is the difference between a slow audit and an
+unusable desktop, and an audit that finishes an hour later is a far smaller cost
+than one that makes everything else stop.
+"""
+
 STYLES: Final = (CLOZE, LABELLED)
 """The two ways a local model can be asked a multiple-choice question.
 
@@ -70,6 +100,55 @@ question.
 """
 
 
+def free_memory_mb() -> int | None:
+    """Free physical memory, or ``None`` when it cannot be determined.
+
+    Returns:
+        Megabytes of free physical memory. ``None`` rather than a guess where
+        the platform is not recognised, so a caller can tell "plenty" apart from
+        "unknown" and not refuse to run on the strength of a fabricated number.
+    """
+    if os.name == "nt":
+
+        class _Status(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        status = _Status()
+        status.dwLength = ctypes.sizeof(_Status)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return None
+        return int(status.ullAvailPhys // (1024 * 1024))
+
+    sysconf = getattr(os, "sysconf", None)
+    if sysconf is None:  # pragma: no cover - platform dependent
+        return None
+    try:  # pragma: no cover - platform dependent
+        return int(sysconf("SC_AVPHYS_PAGES") * sysconf("SC_PAGE_SIZE") // (1024 * 1024))
+    except (ValueError, OSError):
+        return None
+
+
+def default_thread_count() -> int:
+    """How many threads to give torch, leaving the machine usable.
+
+    Returns:
+        At least one, and at most the processor count less
+        :data:`CORES_LEFT_FREE`.
+    """
+    total = os.cpu_count() or 1
+    return max(1, total - CORES_LEFT_FREE)
+
+
 class LocalScorer:
     """Exact log-likelihood scoring with a locally loaded causal model.
 
@@ -83,6 +162,8 @@ class LocalScorer:
         model_name: str,
         *,
         style: str = CLOZE,
+        dtype: str = "float32",
+        threads: int | None = None,
         length_normalise: bool = True,
         max_length: int = 1024,
         device: str = "cpu",
@@ -95,6 +176,12 @@ class LocalScorer:
                 continuation and never shows the model the option list;
                 ``labelled`` presents the options as a list and scores the label
                 tokens. Only the second can exhibit positional effects.
+            dtype: Weight precision, one of :data:`DTYPES`. ``bfloat16`` halves
+                the memory a model occupies at a small cost in precision, and is
+                recorded in the scorer identity so it cannot be silently mixed.
+            threads: Torch thread count. Defaults to leaving
+                :data:`CORES_LEFT_FREE` processors for everything else on the
+                machine.
             length_normalise: Divide summed log-likelihood by token count.
             max_length: Truncation length for the combined prompt and option.
             device: Torch device string.
@@ -103,10 +190,22 @@ class LocalScorer:
             ImportError: If the optional local-scoring dependencies are absent.
                 Raised with an actionable message rather than a bare import
                 error, because this is the most likely thing to be missing.
-            ValueError: If the style is not one of :data:`STYLES`.
+            ValueError: If the style or dtype is unrecognised, or too little
+                memory is free to load a model safely.
         """
         if style not in STYLES:
             raise ValueError(f"style must be one of {STYLES}, got {style!r}")
+        if dtype not in DTYPES:
+            raise ValueError(f"dtype must be one of {DTYPES}, got {dtype!r}")
+
+        available = free_memory_mb()
+        if available is not None and available < MEMORY_FLOOR_MB:
+            raise ValueError(
+                f"only {available} MB of memory is free and loading a model needs more; "
+                f"refusing rather than driving the machine into swapping. Free some "
+                f"memory, or load a smaller model, or pass dtype='bfloat16' to halve "
+                f"what the weights occupy."
+            )
         try:
             import torch  # noqa: PLC0415 - optional dependency, imported on demand
             from transformers import (  # noqa: PLC0415
@@ -119,13 +218,16 @@ class LocalScorer:
                 'pip install "evalassay[local]"'
             ) from exc
 
+        torch.set_num_threads(threads if threads is not None else default_thread_count())
+
         self.model_name = model_name
         self.style = style
+        self.dtype = dtype
         self.length_normalise = length_normalise
         self._max_length = max_length
         self._torch = torch
         self._tokenizer: Any = AutoTokenizer.from_pretrained(model_name)
-        model: Any = AutoModelForCausalLM.from_pretrained(model_name)
+        model: Any = AutoModelForCausalLM.from_pretrained(model_name, dtype=getattr(torch, dtype))
         model.eval()
         model.to(device)
         self._model: Any = model
@@ -138,7 +240,7 @@ class LocalScorer:
     def scorer_id(self) -> str:
         """Identifier recorded in the run manifest."""
         suffix = "norm" if self.length_normalise else "sum"
-        return f"local:{self.model_name}:{self.style}:{suffix}"
+        return f"local:{self.model_name}:{self.style}:{self.dtype}:{suffix}"
 
     @property
     def deterministic(self) -> bool:
@@ -251,6 +353,8 @@ class LocalScorer:
             "backend": "local",
             "model": self.model_name,
             "style": self.style,
+            "dtype": self.dtype,
+            "threads": self._torch.get_num_threads(),
             "length_normalise": self.length_normalise,
             "max_length": self._max_length,
             "device": self._device,
