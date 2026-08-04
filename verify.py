@@ -72,6 +72,10 @@ CHECKS: tuple[Check, ...] = (
         [sys.executable, "-m", "pytest", "-q", "tests/test_stats_shapley.py"],
     ),
     Check(
+        "the package installs on numpy and scipy alone; the rest stay optional",
+        [sys.executable, "-m", "pytest", "-q", "tests/test_optional_dependencies.py"],
+    ),
+    Check(
         "no scorer reads the answer key",
         [
             sys.executable,
