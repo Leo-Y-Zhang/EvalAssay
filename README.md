@@ -56,6 +56,13 @@ thresholds — the manifests agree on both hashes — so the entire **+19.2 poin
 difference is attributable to how the question was put. That is wider than the
 gap between many models on a public leaderboard.
 
+**It replicates.** The same audit on ARC-Challenge gives 0.3720 against 0.5600,
+a **+18.8 point** swing on an independent corpus of different difficulty. And
+the only run in which the model demonstrably beats chance *with the question
+removed entirely* is a labelled one — under `cloze` on ARC-Challenge it scores
+below chance. Presentation does not merely inflate the score; it manufactures
+the part of the score that does not need the question.
+
 Neither number is the right one. A benchmark score is not a property of a model
 alone; it is a property of a model *and* a presentation, and the presentation is
 rarely stated next to the score.

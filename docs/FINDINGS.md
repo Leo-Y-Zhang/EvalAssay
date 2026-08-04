@@ -215,6 +215,42 @@ Neither number is the right one. The point is that a benchmark score is not a
 property of a model alone; it is a property of a model and a presentation, and
 the presentation is rarely stated alongside the score.
 
+### The same effect on a second benchmark
+
+ARC-Challenge, audited identically, gives the same answer:
+
+| Corpus | `cloze` | `labelled` | difference |
+|---|---|---|---|
+| ARC-Easy | 0.5520 | 0.7440 | **+0.1920** |
+| ARC-Challenge | 0.3720 | 0.5600 | **+0.1880** |
+
+Two benchmarks of different difficulty, nineteen points apiece. A single such
+result would be a curiosity; replicated on an independent corpus at nearly the
+same magnitude, it is a property of how this model is asked rather than an
+accident of one item set.
+
+### Presentation does not only raise the score, it creates the blind signal
+
+Blind accuracy - the score with the question removed entirely - across all four
+runs:
+
+| Run | Blind accuracy | 99% interval | Chance | Verdict |
+|---|---|---|---|---|
+| ARC-Easy, `cloze` | 0.3160 | [0.2440, 0.3920] | 0.2498 | not established |
+| ARC-Easy, `labelled` | 0.3240 | [0.2480, 0.4000] | 0.2498 | not established |
+| ARC-Challenge, `cloze` | 0.2240 | [0.1560, 0.2920] | 0.2508 | not established |
+| ARC-Challenge, `labelled` | **0.3480** | [0.2680, 0.4240] | 0.2508 | **established** |
+
+The only run where the model demonstrably beats chance without a question is a
+labelled one. Under `cloze` on ARC-Challenge it scores 0.2240, *below* chance.
+
+That difference has a mechanism rather than being a curiosity. Under `cloze`
+each option is scored alone against a prompt that contains no question and no
+other option, so there is nothing to compare and nothing to exploit. Under
+`labelled` all the options appear together, and a model can pick the one that
+looks most like an answer. **The presentation does not merely inflate the score;
+it manufactures the part of the score that does not need the question.**
+
 ### The decomposition charged nothing, and that is a limitation worth naming
 
 Both runs came out at 100% purity. Read carelessly, "100% pure, twice" alongside

@@ -5,10 +5,19 @@ see what this tool produces without installing or running anything. A committed
 artifact that drifts out of date is worse than no artifact, because it looks
 authoritative while describing a version that no longer exists.
 
-So the example is regenerated here and compared against what is on disk. The
-version line is excluded from the comparison, since library versions differ
-legitimately between machines; everything else must match exactly, which is what
-catches a change in layout, wording or arithmetic.
+So the example is regenerated here and compared against what is on disk.
+
+The rendered text must match line for line, since it rounds to four places and
+that is what a reader actually sees. The JSON carries full precision and is
+compared to a relative tolerance instead: reruns are byte-identical on one
+machine, but a different linear-algebra backend sums the same matrix product in
+a different order and the results differ in the fifteenth significant figure.
+Demanding bit-equality there would assert something this project does not claim.
+The tolerance is checked in both directions - a separate test tampers with the
+committed file and requires the difference to be caught.
+
+The version line is excluded throughout, since library versions differ
+legitimately between machines.
 
 Regenerate with:
 

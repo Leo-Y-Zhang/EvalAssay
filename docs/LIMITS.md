@@ -117,6 +117,18 @@ boundary comparison uses a tolerance for exactly this reason, which removes the
 common case, but the general guarantee is same-machine. The manifest records
 library versions so two results can be checked for comparability at that level.
 
+**Tie-breaking is order-sensitive, which slightly blunts the inert detection.**
+Ties between option scores are broken by a hash of the prompt, and that hash
+includes the option order. Under continuation scoring, where option order should
+be irrelevant, an exact tie can therefore resolve differently after a rotation -
+so the permutation intervention is not always *perfectly* inert even where it
+ought to be. The size of the leak is bounded by what the runs report: on
+ARC-Easy the intervention was fully inert, with a minimum detectable effect of
+exactly zero, meaning no item's outcome moved at all; on ARC-Challenge the
+figure was 0.0011, bounding any effect near a tenth of one percentage point. A
+tie-break keyed on the option's own text rather than on the whole ordered list
+would remove it, and is the obvious next change.
+
 **Bootstrap p-values are approximations.** They are coherent with the intervals
 they accompany and corrected for multiplicity, but they are not exact tests. The
 gate's requirement that the interval also exclude zero exists partly to stop a
