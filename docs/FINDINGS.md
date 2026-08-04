@@ -365,7 +365,74 @@ one is sensitive to framing in a direction that flatters it.
 
 ---
 
-## 4. What is not claimed
+## 4. Two models, 1.6 points apart or 46, depending only on how you ask
+
+Auditing a second model turned the presentation effect from a quantity into a
+ranking problem.
+
+| Model | `cloze` | `labelled` | gap |
+|---|---|---|---|
+| SmolLM2-135M-Instruct | 0.5360 | 0.2840 | **-0.2520** |
+| Qwen2.5-0.5B-Instruct | 0.5520 | 0.7440 | **+0.1920** |
+| **distance between them** | **0.0160** | **0.4600** | |
+
+Same 250 ARC-Easy items, same seed, same thresholds, identical corpus hash on
+every run.
+
+**Under continuation scoring the two models are 1.6 points apart. Under labelled
+multiple choice they are 46 points apart.** A leaderboard using the second
+format would report one model as roughly two and a half times the other; a
+leaderboard using the first would call them tied.
+
+### The gap does not shrink with size, it changes sign
+
+The smaller model is *hurt* by labelled presentation - 25.2 points worse - while
+the larger one gains 19.2. That rules out the tidy story the sweep was designed
+to test, in which presentation dependence is a small-model failing that washes
+out with scale.
+
+The likelier explanation is that labelled multiple choice tests two things at
+once: knowing the answer, and being able to follow "reply with the letter". The
+135M model scores **0.2840 against a chance floor of 0.2498** in that format -
+it is at chance, not because it lacks the knowledge, but because it cannot work
+the format. Score it by continuation, where no format compliance is required,
+and it recovers to 0.5360, within two points of a model nearly four times its
+size.
+
+So the format under-reports models that cannot follow it and rewards models that
+can exploit it, and those two errors point in opposite directions. This is the
+cloze-versus-multiple-choice distinction known in the evaluation literature; what
+is added here is a measured, reproducible instance of it changing a *ranking*
+rather than a score.
+
+### The first artifact ever charged in a real run
+
+Every earlier audit came back at 100% purity. This one did not:
+
+```
+  stronger_distractor         -0.0740  [0.0120, 0.1380]  charged
+  Assayed capability                            0.4620
+  Purity                                        86.2%
+```
+
+**7.4 points of SmolLM2-135M's continuation-scored 0.5360 came from the wrong
+options being weak**, established at the pre-registered threshold. Replacing one
+distractor with a plausible statement from another item takes it away. That is
+the decomposition doing the job it was built for, on a real model, after five
+audits in which it correctly charged nothing.
+
+### A caveat on the 0.5B numbers in that table
+
+They come from the previous night's runs, made before tie-breaking was changed
+to be order-invariant. The change cannot have affected the continuation run,
+where permutation was reported fully inert with a minimum detectable effect of
+exactly zero, meaning no item's outcome moved at all. The labelled run is not
+guaranteed untouched, so both are being re-run under current code and this
+section will be corrected if they move.
+
+---
+
+## 5. What is not claimed
 
 - No statement here is about training-data contamination. Sensitivity to exact
   wording is one symptom of it, but establishing contamination needs access to
