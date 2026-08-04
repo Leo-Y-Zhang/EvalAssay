@@ -6,45 +6,56 @@ Building EvalAssay to a complete, recruiter-grade v1 without further input.
 Work continuously: increment -> gate -> commit targeted paths -> push -> next
 increment. Do not pause between increments.
 
-**NEXT ACTION:** four audits are running in the background and write to `runs/`
-(`_audit.log` prints ALLDONE when finished). When they land, add a model-side
-section to `docs/FINDINGS.md` and update the README's status table.
+**NEXT ACTION:** the four ARC audits are DONE and written up. An MMLU pair is
+running (`runs/_mmlu.log`, prints MMLU_ALLDONE when finished). When it lands,
+add an MMLU section to `docs/FINDINGS.md` covering whether the position artifact
+is finally charged, then run `python verify.py` in full and close out.
 
-Six runs in total: ARC-Easy and ARC-Challenge crossed with two scoring styles,
-then an MMLU pair chained behind them (`runs/_mmlu.log`, waits for ALLDONE in
-`runs/_audit.log` before starting so the two loops do not compete).
+MMLU is the run that matters most. Its answer key is skewed, which is the
+condition under which a positional preference becomes a real artifact rather
+than a wash - so it tests the confirming half of a prediction the calibration
+made and that ARC could only test negatively.
 
-The comparison is itself the finding. Option permutation cannot measure anything
-under `cloze` scoring and can under `labelled`; and MMLU is included because its
-answer key is skewed, which is the condition under which a positional preference
-turns into a real artifact. ARC-Easy's key is uniform, and there the audit
-correctly charges nothing for position even though the model demonstrably moves
-its answer when the options are rotated.
+**Banked and written up already - do not re-derive** (all in `docs/FINDINGS.md`):
 
-**Banked so far** - arc-easy, 250 items, seed 7: reported 0.5520 under `cloze`
-and 0.7440 under `labelled`, a 19.2 point swing from presentation alone. Neither
-run charged any artifact. Blind accuracy 0.3240 [0.2480, 0.4000], correctly
-reported as not established because the interval includes chance.
+- Model-free layer on MMLU test (14,042 items): all four detectors establish a
+  defect. Longest-option scores 28.3% against 25.0% chance; 105 items are exact
+  duplicates; key sits at position 3 for 26.8%; 1.4 points recoverable from
+  options alone. ARC-Easy and ARC-Challenge establish nothing, with MDEs given.
+- Presentation effect, replicated: ARC-Easy 0.5520 -> 0.7440 (+19.2 points) and
+  ARC-Challenge 0.3720 -> 0.5600 (+18.8), continuation scoring against labelled.
+- Blind accuracy across all four ARC runs; established only on ARC-Challenge
+  labelled at 0.3480 [0.2680, 0.4240] against chance 0.2508. Below chance under
+  continuation scoring, which is the evidence that presentation manufactures the
+  question-independent signal rather than merely revealing it.
+- Measured false-positive rate: 4 of 150 clean corpora fired some detector
+  (2.67%, nominal 1%); 0 of 60 charged an artifact against a clean model.
 
-    for BENCH in arc-easy arc-challenge; do for STYLE in labelled cloze; do
-      python -m evalassay.cli audit "data/$BENCH.jsonl"         --model Qwen/Qwen2.5-0.5B-Instruct --style "$STYLE"         --items 250 --seed 7 --json "runs/$BENCH-$STYLE.json"         > "runs/$BENCH-$STYLE.txt" 2>"runs/$BENCH-$STYLE.err"
-    done; done
+To relaunch a died run:
 
-Each run takes roughly forty minutes on CPU. `data/*.jsonl` already exists and
-the model is already in the local cache; nothing needs downloading. If a run
-died, relaunch just that one. **Findings already banked and written up are in
-`docs/FINDINGS.md` - do not re-derive them.**
+    python -m evalassay.cli audit data/<corpus>.jsonl       --model Qwen/Qwen2.5-0.5B-Instruct --style <cloze|labelled>       --items 250 --seed 7 --json runs/<tag>.json > runs/<tag>.txt
+
+Each ARC run takes 40 to 75 minutes on CPU and MMLU longer. `data/*.jsonl`
+exists and the model is in the local cache; nothing needs downloading.
 
 ## The gate (must be green before every commit)
 
 ```
-python -m ruff check src tests
-python -m ruff format --check src tests
+python verify.py            # everything, including the calibration sweep
+python verify.py --fast     # same, minus the calibration, while iterating
+```
+
+Or the pieces directly:
+
+```
+python -m ruff check src tests verify.py
+python -m ruff format --check src tests verify.py
 python -m mypy
 python -m pytest -q
 ```
 
-All four must pass. `mypy` runs in strict mode over `src` and `tests` both.
+`mypy` runs strict over `src`, `tests` and `verify.py`. **A locally green tree is
+not a green build** - check `gh run list` too.
 
 ## What this project is
 
@@ -76,11 +87,10 @@ survives the audit.
    nothing is charged against a clean model or an inert guesser.
 8. [DONE] Reporting (text + JSON), run manifest serialisation, and the `assay`
    CLI with a `demo` subcommand that needs no model, dataset or network.
-9. [IN PROGRESS] The measured findings against a real benchmark, and the
-   write-up. Audits of ARC-Easy and ARC-Challenge (250 items each,
-   Qwen2.5-0.5B-Instruct, seed 7) are running and write to `runs/`.
-   Remaining after they land: `docs/FINDINGS.md`, and a README rewritten
-   around the measured numbers rather than around illustrative ones.
+9. [DONE] Comparison of two audits (`assay compare`), which refuses runs whose
+   manifests disagree, plus a lossless JSON round-trip.
+10. [IN PROGRESS] Measured findings. The model-free results and the four ARC
+    runs are written up in `docs/FINDINGS.md`; the MMLU pair is the remainder.
 
 ## Design decisions already settled - do not relitigate
 
@@ -162,6 +172,19 @@ survives the audit.
   the newest interpreter failed inside numpy's own stub file while the oldest
   passed. Local runs missed it because the local numpy was older than the one CI
   installs. **Check `gh run list` before believing a tree is healthy.**
+- **A count is a discontinuous function, so it must not be compared against a
+  bare zero.** Bootstrap p-values differed between machines by exactly one
+  replicate, because many replicates land algebraically on zero and a different
+  linear-algebra backend nudges them either side. The comparison uses the
+  numerical tolerance. Byte-identical reruns are a same-machine promise and the
+  documents now say so; the committed example is compared to a relative
+  tolerance, with a second test proving the tolerance still catches real drift.
+- **Tie-breaking folds the option order into its hash**, so an exact tie can
+  resolve differently after a rotation and the inert detection is slightly
+  blunted under continuation scoring. Bounded by the runs at exactly zero on
+  ARC-Easy and 0.0011 on ARC-Challenge. A tie-break keyed on the option's own
+  text would remove it - the obvious next change, deliberately not made while
+  runs were in flight because it would de-sync findings from the code.
 - **The repo is born clean and has been scanned:** no machine paths, no personal
   identifiers, no other project names, no agent files tracked, correct identity
   on author and committer, no AI trailers. It can be flipped public as-is.
