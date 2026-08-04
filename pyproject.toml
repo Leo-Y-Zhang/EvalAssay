@@ -77,7 +77,13 @@ convention = "google"
 # Types
 # ---------------------------------------------------------------------------
 [tool.mypy]
-python_version = "3.11"
+# Deliberately not pinned to a python_version. Pinning it to the minimum
+# supported version makes mypy analyse the installed third-party stubs under
+# older language rules, and modern numpy stubs use syntax that only parses on
+# 3.12 and later - so the check failed on the newest interpreter while passing
+# on the oldest, which is the opposite of useful. Unpinned, mypy assumes the
+# interpreter it runs under, and the CI matrix type-checks both ends of the
+# supported range properly instead of neither.
 strict = true
 files = ["src", "tests", "verify.py"]
 warn_unreachable = true
