@@ -35,6 +35,12 @@ The same layer establishes **nothing** on ARC-Easy or ARC-Challenge, and reports
 what it could have seen if it were there. A tool that only ever finds problems is
 not measuring anything.
 
+That whole layer runs on **numpy and scipy alone** — no model, no GPU, no
+machine-learning stack. Anyone can check a benchmark they were handed. The
+heavier dependencies are optional and imported only inside the functions that
+need them, which a test enforces by reading the source rather than trusting
+whatever happens to be installed.
+
 Full numbers, reproduce commands and caveats: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ---
