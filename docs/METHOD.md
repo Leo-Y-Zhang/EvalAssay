@@ -168,6 +168,24 @@ intervention that helps the model is reported but never charged.
 The asymmetry is the point. This tool's output is a criticism, and an instrument
 that can only understate the charge is the right one to reach for.
 
+### What counts as one family
+
+Multiplicity is corrected within two families, separately:
+
+- the three artifact shares, which are statements about the **model**;
+- the four model-free detectors, which are statements about the **benchmark**.
+
+They are corrected apart because they answer different questions, and pooling
+them would make a benchmark's defects raise the bar for establishing a model's
+artifacts, which has no principled justification. The cost is that the
+*combined* error rate across both families is bounded by roughly the sum, not by
+`alpha` — worth knowing if you intend to read both sets of findings as a single
+verdict.
+
+The blind-accuracy diagnostic is in neither family. It reports an accuracy with
+an interval rather than testing a hypothesis, and nothing is deducted on the
+strength of it.
+
 ### Minimum detectable effect, not post-hoc power
 
 A null result reports the smallest effect the run could have detected at its

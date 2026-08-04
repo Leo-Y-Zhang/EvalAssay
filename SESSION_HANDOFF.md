@@ -54,7 +54,11 @@ survives the audit.
    nothing is charged against a clean model or an inert guesser.
 8. [DONE] Reporting (text + JSON), run manifest serialisation, and the `assay`
    CLI with a `demo` subcommand that needs no model, dataset or network.
-9. [NEXT] The measured findings against a real benchmark, and the write-up.
+9. [IN PROGRESS] The measured findings against a real benchmark, and the
+   write-up. Audits of ARC-Easy and ARC-Challenge (250 items each,
+   Qwen2.5-0.5B-Instruct, seed 7) are running and write to `runs/`.
+   Remaining after they land: `docs/FINDINGS.md`, and a README rewritten
+   around the measured numbers rather than around illustrative ones.
 
 ## Design decisions already settled - do not relitigate
 
@@ -107,6 +111,16 @@ survives the audit.
 - **Scorers never read `answer_index`.** Enforced by a test that tampers with it
   and requires identical scores. The oracle locates the key by matching answer
   text, so it satisfies the same contract as the real backends.
+- **Multiple-choice replies are parsed by token, never by scanning characters.**
+  Character scanning made "The answer is B." resolve to A (from "answer") and
+  made "I would rather not say" a confident answer rather than an abstention.
+- **Model-side and benchmark-side findings are corrected as two separate
+  families**, because they answer different questions; the combined error rate
+  is therefore bounded by roughly the sum rather than by alpha, and METHOD.md
+  says so.
+- **The repo is born clean and has been scanned:** no machine paths, no personal
+  identifiers, no other project names, no agent files tracked, correct identity
+  on author and committer, no AI trailers. It can be flipped public as-is.
 
 ## Repository conventions
 
