@@ -138,6 +138,12 @@ survives the audit.
   Blind accuracy of 0.316 with interval [0.244, 0.392] against chance 0.250 was
   being narrated as "the model is not answering the question"; the interval
   includes chance, so that was unsupported.
+- **Do not watch long jobs with a harness background task; they get killed.** The
+  waiter armed to notice the audits finishing was stopped mid-run, while the
+  audits themselves - launched with `nohup bash -c '...' &` - kept going, along
+  with the shell driving the loop. Verified by process inspection after the kill:
+  the detached tree survived and only the tracked task died. Poll from the
+  recurring heartbeat instead of arming a watcher.
 - **A locally green tree is not a green build.** The type check was pinned to the
   minimum supported Python, which made mypy read the installed third-party stubs
   under older language rules; modern numpy stubs need 3.12 syntax, so the job on
