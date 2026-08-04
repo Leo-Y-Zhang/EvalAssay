@@ -22,6 +22,7 @@ something parseable would quietly select for the items it finds easy.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Final
 
 import numpy as np
@@ -40,6 +41,15 @@ SYSTEM_PROMPT: Final = (
 )
 
 MAX_LABELS: Final = len(LABELS)
+
+_LABELLED: Final = re.compile(r"\b([ABCDEFGH])[).:\]]")
+"""A label followed by punctuation, as in "B)" or "C." - the strongest signal."""
+
+_STANDALONE: Final = re.compile(r"\b([ABCDEFGH])\b")
+"""A label standing alone as a word, as in "the answer is B"."""
+
+_TRIM: Final = " .):;\"'*`\n\t"
+"""Punctuation stripped before testing whether a reply is a bare label."""
 
 
 class ApiScorer:
@@ -116,6 +126,20 @@ class ApiScorer:
     def _parse(self, reply: str, n_choices: int) -> int | None:
         """Extract an option index from a reply.
 
+        Scanning the reply character by character for the first letter that
+        happens to be a label is the obvious implementation, and it is wrong.
+        "The answer is B." contains an A inside "answer" before it reaches the
+        B, so the obvious version answers A. Worse, "I would rather not say"
+        contains the A in "rather", so a refusal is recorded as a confident
+        answer rather than as an abstention.
+
+        Neither failure is spread evenly across the audit's conditions, so both
+        would land in the decomposition as artifacts belonging to the parser
+        rather than to the model.
+
+        Labels are therefore recognised only as tokens: a bare reply, a label
+        followed by punctuation, or a label standing alone as a word.
+
         Args:
             reply: The model's text.
             n_choices: How many options were offered.
@@ -123,10 +147,20 @@ class ApiScorer:
         Returns:
             The chosen index, or ``None`` if the reply named no valid option.
         """
-        for character in reply.strip().upper():
-            position = LABELS.find(character)
-            if 0 <= position < n_choices:
-                return position
+        cleaned = reply.strip().upper()
+        if not cleaned:
+            return None
+
+        bare = cleaned.strip(_TRIM)
+        if len(bare) == 1:
+            position = LABELS.find(bare)
+            return position if 0 <= position < n_choices else None
+
+        for pattern in (_LABELLED, _STANDALONE):
+            for match in pattern.finditer(cleaned):
+                position = LABELS.find(match.group(1))
+                if 0 <= position < n_choices:
+                    return position
         return None
 
     def score(self, item: Item) -> FloatArray:
