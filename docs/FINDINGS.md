@@ -282,6 +282,58 @@ not position-skewed, and so rotation gains and loses in equal measure and no
 artifact exists to charge. The confirming half of the prediction requires a
 benchmark whose key *is* skewed, which is why MMLU is the next corpus.
 
+### MMLU: the question is worth 4.8 points, and that is inside the noise
+
+**Qwen2.5-0.5B-Instruct on MMLU**, 250 items stratified across subjects, seed 7.
+
+| | |
+|---|---|
+| Reported score | 0.4200 |
+| Blind accuracy (question removed) | **0.3720** [0.2920, 0.4480] |
+| Chance | 0.2500 |
+| What the question adds | **+0.0480**, paired p 0.2007 |
+
+Two statements hold at once, and both are established at the stated thresholds:
+
+- The model scores **well above chance with no question at all** - the blind
+  interval excludes chance, by 12.2 points.
+- Removing the question **does not significantly change its accuracy** - the
+  paired test gives p = 0.20, so at this sample size the 4.8 point difference
+  cannot be told from zero.
+
+On MMLU, for this model, almost the whole score is available without reading the
+question. That is a stronger statement than anything the artifact decomposition
+found, and it comes from the diagnostic that deliberately sits *outside* the
+decomposition, which is the argument for measuring it separately rather than
+folding it in.
+
+It is not a claim that the question is irrelevant in general: p = 0.20 means
+*not distinguished from zero here*, not *shown to be zero*. A larger sample could
+separate 4.8 points comfortably.
+
+### The position prediction could not be tested at this sample size
+
+MMLU was chosen because its answer key is skewed, which is the condition under
+which a positional preference becomes a chargeable artifact. The audit charged
+nothing, and the reason is instructive rather than disappointing.
+
+On the **full** 14,042-item test split the key skew is established at **0.0180**.
+On the **250-item sample** actually audited, the position-skew detector reports a
+minimum detectable effect of **0.0677** - nearly four times the true effect - so
+the sample cannot see the skew that the full set establishes. The model-side
+permutation share has an MDE of **0.0555**, and no positional preference can
+convert a 1.8 point key skew into more than 1.8 points of accuracy.
+
+**The artifact is therefore below the detection threshold by construction, not
+by measurement.** Scaling the minimum detectable effect as one over the square
+root of the sample size, testing this would need roughly **2,400 items** rather
+than 250.
+
+That is the honest outcome: a null with a quantitative reason and a stated
+requirement for settling it, rather than a shrug. It is also a live demonstration
+of why a null result is only worth reading next to its MDE - the same detector
+establishes the defect on the full corpus and cannot see it on a sample.
+
 ### An intervention that helped, and was still not charged
 
 Under `cloze`, neutral reframing came out at **-0.0560**: prefixing the question
