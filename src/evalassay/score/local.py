@@ -128,10 +128,13 @@ def free_memory_mb() -> int | None:
         # ctypes.windll only exists in typeshed's Windows-target stub, and mypy's
         # `warn_unreachable` (with platform unpinned, so CI's Linux runner narrows
         # every `os.name == "nt"` branch as dead code) rules out a sys.platform
-        # guard here too. getattr sidesteps the stub gap: this line is Any-typed,
-        # so it is exempt from attribute checking on every mypy target platform.
-        windll = getattr(ctypes, "windll")
-        if not windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        # guard here too. A defaulted getattr sidesteps the stub gap the same way
+        # `sysconf` does below: Any-typed regardless of mypy's target platform,
+        # and the 3-arg form keeps ruff's B009 (which fires on the 2-arg form,
+        # since that IS just attribute access) from wanting it reverted straight
+        # back to `ctypes.windll`.
+        windll = getattr(ctypes, "windll", None)
+        if windll is None or not windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return None
         return int(status.ullAvailPhys // (1024 * 1024))
 
