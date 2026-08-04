@@ -77,7 +77,7 @@ Chance (uniform guessing)                       0.2500
   stronger_distractor         -0.0493  [0.0318, 0.0725]  charged
   neutral_reframing           -0.1166  [0.0873, 0.1525]  charged
   permute_options                   -  not established (MDE 0.0445)
-                                       adjusted p 0.9595 exceeds alpha 0.0100
+                                       adjusted p 0.9625 exceeds alpha 0.0100
 ------------------------------------------------------------------------------
   Assayed capability                            0.5541
   Purity (share of the score that survived)      77.0%
@@ -124,8 +124,13 @@ Not post-hoc power, which is just a restatement of the p-value, but the
 Every audit emits a manifest: corpus hash, item count and order, scorer identity,
 config hash, seed, library versions. Local scoring uses exact per-option
 log-likelihood rather than generation, so there is no sampling and no answer
-parsing, and two runs produce byte-identical JSON. Hosted-API backends are
-recorded as `deterministic: false` and the report says so in as many words.
+parsing, and two runs **on the same machine and library versions** produce
+byte-identical JSON. The manifest records those versions precisely because that
+qualifier is real: a different linear-algebra backend sums a matrix product in a
+different order, and the audit was caught reporting a p-value one bootstrap
+replicate different across machines before the boundary comparison was widened
+to a tolerance. Hosted-API backends are recorded as `deterministic: false` and
+the report says so in as many words.
 
 **6. An intervention that cannot bite says so.**
 Scoring each option as a continuation never shows the model the option *list*, so

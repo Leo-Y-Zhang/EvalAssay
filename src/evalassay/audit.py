@@ -221,10 +221,26 @@ def _bootstrap_p_value(replicates: FloatArray, point: float) -> float:
     if float(np.max(np.abs(replicates))) <= NUMERICAL_TOLERANCE:
         return 1.0
 
+    # The comparison is made against a tolerance rather than against zero, and
+    # that is a reproducibility fix rather than a cosmetic one.
+    #
+    # A p-value here is a *count*, which is a discontinuous function of the
+    # replicates. Per-item outcomes are discrete and bootstrap weights are
+    # integers, so a large number of replicates land algebraically exactly on
+    # zero. Comparing those against 0.0 lets a different summation order inside
+    # the matrix product - a different machine, or a different linear-algebra
+    # backend - nudge them to plus or minus a few times ten to the minus
+    # seventeen and move them across the boundary. One replicate crossing shifts
+    # the reported p-value in the fourth decimal place, which is exactly how this
+    # was found: continuous integration produced 0.9605 where the committed
+    # example said 0.9595.
+    #
+    # Widening the boundary by the numerical tolerance makes the count depend on
+    # the sign of a replicate only when its sign is real.
     if point > 0.0:
-        tail = int(np.count_nonzero(replicates <= 0.0))
+        tail = int(np.count_nonzero(replicates <= NUMERICAL_TOLERANCE))
     else:
-        tail = int(np.count_nonzero(replicates >= 0.0))
+        tail = int(np.count_nonzero(replicates >= -NUMERICAL_TOLERANCE))
     return min(1.0, 2.0 * (1 + tail) / (replicates.size + 1))
 
 

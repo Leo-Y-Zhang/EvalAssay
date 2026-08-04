@@ -44,15 +44,15 @@
       "verdict": "established"
     },
     {
-      "adjusted_p": 0.95952023988006,
+      "adjusted_p": 0.9625187406296851,
       "attributed_points": 0.0,
-      "description": "correct option placed at every position in turn - not established: adjusted p 0.9595 exceeds alpha 0.0100",
+      "description": "correct option placed at every position in turn - not established: adjusted p 0.9625 exceeds alpha 0.0100",
       "estimate": {
         "ci_high": 0.03623994264778991,
         "ci_low": -0.030458361321797526,
         "method": "exact Shapley over intervention coalitions; BCa item bootstrap",
         "n": 500,
-        "p_value": 0.95952023988006,
+        "p_value": 0.9625187406296851,
         "point": -0.0004166666666666624
       },
       "minimum_detectable_effect": 0.044464215042462965,

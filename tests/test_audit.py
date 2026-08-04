@@ -22,7 +22,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from evalassay.audit import AuditConfig, inert_players, run_audit
+from evalassay.audit import AuditConfig, _bootstrap_p_value, inert_players, run_audit
 from evalassay.corpus.synthetic import CorpusSpec, generate
 from evalassay.intervene.interventions import NeutralReframing
 from evalassay.score.oracle import OracleScorer, OracleSpec
@@ -212,6 +212,42 @@ def test_calibration_two_artifacts_are_separated() -> None:
 # --------------------------------------------------------------------------
 # The measured false-positive rate
 # --------------------------------------------------------------------------
+
+
+def test_the_bootstrap_p_value_survives_numerical_noise() -> None:
+    """A count must not turn floating-point noise into a different answer.
+
+    Per-item outcomes are discrete and bootstrap weights are integers, so many
+    replicates land algebraically exactly on zero. A different linear-algebra
+    backend sums the underlying matrix product in a different order and nudges
+    those either side of the boundary. Comparing against zero would let that
+    change the reported p-value, which is how the problem was found: continuous
+    integration produced a p-value one replicate different from the committed
+    example.
+    """
+    rng = np.random.default_rng(4)
+    replicates = np.concatenate(
+        [
+            np.zeros(400),  # exactly on the boundary
+            rng.uniform(0.01, 0.2, size=600),
+        ]
+    ).astype(np.float64)
+    clean = _bootstrap_p_value(replicates, point=0.1)
+
+    for scale in (1e-17, 1e-16, 1e-15):
+        jittered = np.asarray(
+            replicates + rng.uniform(-scale, scale, size=replicates.size), dtype=np.float64
+        )
+        assert _bootstrap_p_value(jittered, point=0.1) == clean, (
+            f"a perturbation of {scale} changed the p-value"
+        )
+
+
+def test_a_genuinely_small_effect_still_counts_toward_the_tail() -> None:
+    # The tolerance must not swallow effects that are real, only ones that are
+    # numerical noise.
+    replicates = np.full(1000, 1e-6, dtype=np.float64)
+    assert _bootstrap_p_value(replicates, point=1e-6) < 1.0
 
 
 @pytest.mark.slow

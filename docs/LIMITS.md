@@ -107,6 +107,16 @@ statistically significant excess but is the largest contributor to the
 family-wise rate of 2.7%. Treat a marginal finding from this detector as weaker
 evidence than its p-value implies.
 
+**Byte-identical reruns are a same-machine promise.** Log-likelihood scoring is
+deterministic and the seeds fix every draw, so a rerun on the same machine with
+the same library versions reproduces the JSON exactly. Across machines, a
+different linear-algebra backend sums the same matrix product in a different
+order, and quantities that are *counts* - the bootstrap p-values - can move
+because a replicate sitting algebraically on zero lands either side of it. The
+boundary comparison uses a tolerance for exactly this reason, which removes the
+common case, but the general guarantee is same-machine. The manifest records
+library versions so two results can be checked for comparability at that level.
+
 **Bootstrap p-values are approximations.** They are coherent with the intervals
 they accompany and corrected for multiplicity, but they are not exact tests. The
 gate's requirement that the interval also exclude zero exists partly to stop a

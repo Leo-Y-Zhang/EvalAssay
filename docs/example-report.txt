@@ -21,7 +21,7 @@ Chance (uniform guessing)                       0.2500
   stronger_distractor         -0.0493  [0.0318, 0.0725]  charged
   neutral_reframing           -0.1166  [0.0873, 0.1525]  charged
   permute_options                   -  not established (MDE 0.0445)
-                                       adjusted p 0.9595 exceeds alpha 0.0100
+                                       adjusted p 0.9625 exceeds alpha 0.0100
 ------------------------------------------------------------------------------
   Assayed capability                            0.5541
   Purity (share of the score that survived)      77.0%
