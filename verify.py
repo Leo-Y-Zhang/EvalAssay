@@ -76,6 +76,10 @@ CHECKS: tuple[Check, ...] = (
         [sys.executable, "-m", "pytest", "-q", "tests/test_optional_dependencies.py"],
     ),
     Check(
+        "a saved report round-trips losslessly, so comparisons are trustworthy",
+        [sys.executable, "-m", "pytest", "-q", "tests/test_compare.py"],
+    ),
+    Check(
         "no scorer reads the answer key",
         [
             sys.executable,

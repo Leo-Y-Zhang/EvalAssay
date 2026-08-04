@@ -240,7 +240,20 @@ answers position one scores exactly chance whether or not the options are
 rotated, when the benchmark's key is uniform. The audit correctly charges nothing
 in that case, and the two facts have to be read together.
 
-## 10. Reproducibility
+## 10. Comparing two audits
+
+A difference between two reported scores is worth having only if everything
+except the factor under study was held fixed. That is easy to claim and easy to
+get wrong, so it is checked mechanically rather than remembered: comparison
+refuses when the two manifests disagree about the corpus content hash or the
+configuration hash, and names which one differs.
+
+The intended use is separating presentation from capability. Audit one model on
+one corpus twice, changing only how the question is put - options scored as
+continuations, or shown as a labelled list - and difference the two. Whatever
+moves is a property of the presentation, since nothing else could have changed.
+
+## 11. Reproducibility
 
 Every run emits a manifest: corpus content hash, item count and order, scorer
 identity, configuration hash, seed, and library versions.

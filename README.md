@@ -220,6 +220,21 @@ assay pathology corpus.jsonl                       # no model needed
 assay audit corpus.jsonl --model <hf-id> --items 250 --json report.json
 ```
 
+To measure how much of a score is *presentation* rather than capability, audit
+the same model on the same corpus twice, changing only how the question is put,
+and difference them:
+
+```bash
+assay audit corpus.jsonl --model <hf-id> --style cloze    --json cloze.json
+assay audit corpus.jsonl --model <hf-id> --style labelled --json labelled.json
+assay compare cloze.json labelled.json
+```
+
+`compare` **refuses** if the two manifests disagree about the corpus content hash
+or the thresholds, and names which one differs. A difference computed across
+runs that were not actually comparable is a plausible number that means nothing,
+which is worse than an error.
+
 No benchmark data ships with this repository. Loaders read datasets you obtained
 yourself, under whatever licence they carry.
 
@@ -238,6 +253,7 @@ yourself, under whatever licence they carry.
 | Interventions and the audit engine | tested |
 | Scorers: oracle, local log-likelihood, hosted API | tested |
 | Text and JSON reporting, run manifest, `assay` CLI | tested |
+| Lossless JSON round-trip and manifest-checked comparison | tested |
 
 Gate on every commit: `ruff check`, `ruff format --check`, `mypy` (strict, over
 source *and* tests), `pytest`, and the calibration sweep.
