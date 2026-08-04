@@ -171,6 +171,11 @@ is doing other things.
   at all. Precision is recorded in the scorer identity, so two runs at different
   precisions can never be silently compared.
 
+The memory probe is platform-specific, and that has a history: its first version
+called a Windows-only entry point that type-checked locally and failed on the
+Linux continuous-integration runner, because the declaration exists only in the
+Windows-target type stubs. The local gate now checks both platforms.
+
 None of this makes an audit fast. It makes an audit a considerate neighbour,
 which matters more when the alternative is losing whatever else was running.
 

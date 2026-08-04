@@ -59,6 +59,10 @@ CHECKS: tuple[Check, ...] = (
         [sys.executable, "-m", "mypy"],
     ),
     Check(
+        "the types also check against the platform continuous integration runs on",
+        [sys.executable, "-m", "mypy", "--platform", "linux"],
+    ),
+    Check(
         "the test suite passes",
         [sys.executable, "-m", "pytest", "-q", "-m", "not slow"],
     ),

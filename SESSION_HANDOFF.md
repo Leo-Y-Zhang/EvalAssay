@@ -185,6 +185,15 @@ survives the audit.
   with the shell driving the loop. Verified by process inspection after the kill:
   the detached tree survived and only the tracked task died. Poll from the
   recurring heartbeat instead of arming a watcher.
+- **Type-check against the platform CI runs on, not just the local one.** A
+  Windows-only call (`ctypes.windll`) passed mypy locally and failed on the
+  Linux runner, because typeshed only declares it in the Windows-target stub.
+  Two commits went red before anyone noticed. `verify.py` now runs
+  `mypy --platform linux` as a separate check; measured, the same snippet passes
+  under `--platform win32` and fails under `--platform linux`, so the gate would
+  have caught it. **This is the second time the same class of error - platform
+  or version dependent type checking - has turned CI red while local was
+  green.**
 - **A locally green tree is not a green build.** The type check was pinned to the
   minimum supported Python, which made mypy read the installed third-party stubs
   under older language rules; modern numpy stubs need 3.12 syntax, so the job on
