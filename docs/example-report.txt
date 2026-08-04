@@ -30,6 +30,7 @@ Blind accuracy - the question removed entirely
 ------------------------------------------------------------------------------
   accuracy with no question    0.3680  [0.3115, 0.4200]
   above chance by              0.1180
+  vs question shown                    paired p 2.088e-53, uncorrected
   On those items the model is not answering the question, because there
   is no question. This is a floor, not part of the decomposition.
 

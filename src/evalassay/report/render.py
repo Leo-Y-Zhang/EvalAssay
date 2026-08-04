@@ -153,6 +153,13 @@ def render_blind(report: AuditReport) -> list[str]:
         f"  {'accuracy with no question':<26}{blind.point:>9.4f}  "
         f"[{blind.ci_low:.4f}, {blind.ci_high:.4f}]",
         f"  {'above chance by':<26}{excess:>9.4f}",
+        # Two different questions are being answered here and conflating them
+        # would be easy. The interval speaks to whether the residual beats
+        # chance; the paired test speaks to whether removing the question
+        # changed anything at all. Neither is corrected for multiplicity,
+        # because this diagnostic sits outside both families - which is stated
+        # rather than left for a reader to infer from its absence.
+        f"  {'vs question shown':<26}{'':>9}  paired p {blind.p_value:.4g}, uncorrected",
     ]
 
     # The interpretation is only stated when the interval clears chance. A point

@@ -171,6 +171,17 @@ def test_blind_accuracy_is_shown_with_its_excess_over_chance() -> None:
     assert "not answering the question" in text
 
 
+def test_the_blind_block_separates_its_two_questions() -> None:
+    # "Is the residual above chance" and "did removing the question change
+    # anything" are different questions, and the report answers both without
+    # letting either stand in for the other.
+    blind = Estimate(point=0.37, ci_low=0.31, ci_high=0.43, p_value=1e-9, n=250, method="m")
+    text = "\n".join(render_blind(_report(blind=blind)))
+    assert "above chance by" in text
+    assert "vs question shown" in text
+    assert "uncorrected" in text
+
+
 def test_a_blind_score_whose_interval_includes_chance_is_not_asserted() -> None:
     # A point estimate above chance with an interval straddling it is exactly
     # the over-reading this tool objects to; the report must not commit it.
