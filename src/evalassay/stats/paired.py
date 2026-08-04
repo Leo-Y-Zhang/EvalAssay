@@ -240,6 +240,32 @@ def minimum_detectable_effect(discordance_rate: float, n: int, alpha: float, pow
         raise ValueError(f"power {power} outside (0, 1)")
     if discordance_rate == 0.0:
         return 0.0
+    return mde_from_standard_error(float(np.sqrt(discordance_rate / n)), alpha, power)
+
+
+def mde_from_standard_error(standard_error: float, alpha: float, power: float) -> float:
+    """Minimum detectable effect implied by an estimator's standard error.
+
+    Used where the standard error comes from a bootstrap rather than a closed
+    form, which is the case for the Shapley shares.
+
+    Args:
+        standard_error: Standard error of the estimator.
+        alpha: Two-sided significance level.
+        power: Target power.
+
+    Returns:
+        The smallest effect detectable at this precision.
+
+    Raises:
+        ValueError: If any argument is outside its valid range.
+    """
+    if standard_error < 0.0:
+        raise ValueError(f"standard_error must not be negative, got {standard_error}")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError(f"alpha {alpha} outside (0, 1)")
+    if not 0.0 < power < 1.0:
+        raise ValueError(f"power {power} outside (0, 1)")
     z_alpha = float(sps.norm.ppf(1.0 - alpha / 2.0))
     z_power = float(sps.norm.ppf(power))
-    return (z_alpha + z_power) * float(np.sqrt(discordance_rate / n))
+    return (z_alpha + z_power) * standard_error

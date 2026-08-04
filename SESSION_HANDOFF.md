@@ -6,10 +6,9 @@ Building EvalAssay to a complete, recruiter-grade v1 without further input.
 Work continuously: increment -> gate -> commit targeted paths -> push -> next
 increment. Do not pause between increments.
 
-**NEXT ACTION:** build `src/evalassay/intervene/` and `src/evalassay/score/` -
-the paired interventions (option permutation, hide-question, verified
-meaning-preserving rewrite, distractor injection), the `Scorer` interface with
-oracle / local / API backends, and the content-addressed score cache.
+**NEXT ACTION:** build `src/evalassay/report/` (text table + machine-readable
+JSON + run manifest serialisation) and `src/evalassay/cli.py` (the `assay`
+entry point), then run the real audit against ARC and write up the findings.
 
 ## The gate (must be green before every commit)
 
@@ -46,12 +45,12 @@ survives the audit.
 5. [DONE] Pathology detectors (model-free): choices-only solvability, position
    skew, longest-answer heuristic, near-duplicates. Each calibrated against
    planted defects and verified silent on clean corpora.
-6. [NEXT] Interventions and scorers: option permutation, hide-question, verified
-   meaning-preserving rewrite, distractor injection; oracle / local / API
-   scorer backends behind one interface, with a content-addressed score cache.
-7. Calibration harness: prove the instrument recovers planted effects within
-   interval, and stays silent on clean controls. Measure the false-positive rate.
-8. Reporting, run manifest, CLI, and the written-up measured findings.
+6. [DONE] Interventions and scorers, plus the audit engine (`audit.py`).
+7. [DONE] Calibration harness (`tests/test_audit.py`, marked slow, run by CI):
+   planted artifacts are recovered inside the audit's own intervals, and
+   nothing is charged against a clean model or an inert guesser.
+8. [NEXT] Reporting, run manifest serialisation, CLI, and the measured findings
+   against a real benchmark.
 
 ## Design decisions already settled - do not relitigate
 
@@ -88,6 +87,22 @@ survives the audit.
   ones.** The excluding version silently produced zero candidates on a
   small-vocabulary corpus and reported a corpus that was a tenth duplicates as
   clean.
+- **THREE Shapley players, not four. Hiding the question is NOT one of them.**
+  The game attributes inflation, so every player must remove an artifact.
+  Removing the question destroys the accuracy that *needed* the question, which
+  is capability; charging it would inverpt the meaning of the report. Blind
+  accuracy is measured separately and reported as a floor.
+- **Positional preference is only an artifact on a skewed benchmark.** A model
+  that always answers position one scores exactly chance with or without
+  rotation when the key is uniform. Verified by calibration, and it is why the
+  audit correctly charges nothing in that case.
+- **Bootstrap p-values must treat near-zero effects as null.** An intervention
+  that changes nothing produces shares that are algebraically zero but land on
+  values like 1e-18, all one sign; counting the opposite tail then finds nothing
+  and returns p near zero - a confident claim of a provably absent effect.
+- **Scorers never read `answer_index`.** Enforced by a test that tampers with it
+  and requires identical scores. The oracle locates the key by matching answer
+  text, so it satisfies the same contract as the real backends.
 
 ## Repository conventions
 

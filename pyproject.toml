@@ -64,6 +64,8 @@ ignore = [
 # This file deliberately contains confusable characters: they are the fixtures
 # for the normalisation tests, and flagging them would be flagging the subject.
 "tests/test_hashing.py" = ["D100", "D103", "PLR2004", "RUF001", "RUF002", "RUF003"]
+# The quote-swap table deliberately contains the confusable characters it maps.
+"src/evalassay/intervene/interventions.py" = ["RUF001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

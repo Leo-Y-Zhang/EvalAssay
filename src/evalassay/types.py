@@ -290,6 +290,16 @@ class AuditReport:
             share, established or not.
         components: The artifact decomposition.
         findings: Model-free corpus defects.
+        chance_accuracy: What a uniform guesser would score on this corpus.
+        blind_accuracy: Accuracy with the question removed entirely, or ``None``
+            if the diagnostic was not run.
+
+            This sits outside the decomposition on purpose. Removing the
+            question destroys the accuracy that *depended* on the question,
+            which is capability, not an artifact - charging it to the model
+            would invert the meaning of the report. What it does reveal is the
+            floor: a model scoring well above chance with nothing to answer is,
+            on those items, not answering anything.
     """
 
     manifest: RunManifest
@@ -297,6 +307,8 @@ class AuditReport:
     total_drop: float
     components: tuple[Component, ...]
     findings: tuple[Finding, ...]
+    chance_accuracy: float = 0.0
+    blind_accuracy: Estimate | None = None
 
     @property
     def attributed_points(self) -> float:
