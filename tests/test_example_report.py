@@ -83,6 +83,39 @@ def test_the_example_text_still_matches_what_the_tool_produces() -> None:
     assert committed_lines[start : start + len(rendered_lines)] == rendered_lines
 
 
+def _same_shape_and_value(fresh: object, committed: object, path: str = "") -> None:
+    """Assert two parsed reports agree, allowing last-bit float differences.
+
+    Exact equality would assert something the project does not claim. Reruns are
+    byte-identical on one machine, but a different linear-algebra backend sums
+    the same matrix product in a different order, and the results differ in the
+    fifteenth significant figure. This test exists to catch drift in layout,
+    fields or arithmetic - all of which move a number far more than that - so it
+    compares to a relative tolerance rather than policing the last bit.
+
+    Args:
+        fresh: The freshly computed value.
+        committed: The value read from disk.
+        path: Location within the document, for the failure message.
+
+    Raises:
+        AssertionError: If the structures differ, or a number differs by more
+            than the tolerance.
+    """
+    if isinstance(fresh, dict) and isinstance(committed, dict):
+        assert set(fresh) == set(committed), f"different fields at {path or 'root'}"
+        for key in fresh:
+            _same_shape_and_value(fresh[key], committed[key], f"{path}.{key}")
+    elif isinstance(fresh, list) and isinstance(committed, list):
+        assert len(fresh) == len(committed), f"different lengths at {path}"
+        for index, (left, right) in enumerate(zip(fresh, committed, strict=True)):
+            _same_shape_and_value(left, right, f"{path}[{index}]")
+    elif isinstance(fresh, float) or isinstance(committed, float):
+        assert fresh == pytest.approx(committed, rel=1e-9, abs=1e-12), f"value drift at {path}"
+    else:
+        assert fresh == committed, f"value drift at {path}"
+
+
 def test_the_example_json_still_matches_what_the_tool_produces() -> None:
     _, serialised = _rebuild()
     fresh = json.loads(serialised)
@@ -90,7 +123,24 @@ def test_the_example_json_still_matches_what_the_tool_produces() -> None:
 
     fresh["manifest"].pop("library_versions")
     committed["manifest"].pop("library_versions")
-    assert fresh == committed
+    _same_shape_and_value(fresh, committed)
+
+
+def test_the_example_comparison_would_notice_a_real_change() -> None:
+    # The tolerance must be loose enough for last-bit noise and tight enough to
+    # catch anything a person would call a change.
+    committed = json.loads(JSON.read_text(encoding="utf-8"))
+    committed["manifest"].pop("library_versions")
+
+    tampered = json.loads(json.dumps(committed))
+    tampered["purity"] = committed["purity"] + 0.0001
+    with pytest.raises(AssertionError, match=r"value drift at \.purity"):
+        _same_shape_and_value(tampered, committed)
+
+    renamed = json.loads(json.dumps(committed))
+    renamed["assayed_capability"] = renamed.pop("assayed_score")
+    with pytest.raises(AssertionError, match="different fields"):
+        _same_shape_and_value(renamed, committed)
 
 
 def test_the_example_records_no_local_path() -> None:
