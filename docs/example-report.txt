@@ -1,0 +1,48 @@
+Auditing a simulated model with these artifacts planted in it:
+  memorisation            0.25
+  distractor reliance     0.20
+  positional preference   0.00
+  genuine skill           0.40
+
+------------------------------------------------------------------------------
+
+EvalAssay report
+==============================================================================
+corpus   synthetic[seed=11]
+         sha256:eafadb7f3ecc  500 items
+model    oracle:skill=0.4,memorisation=0.25,distractor=0.2:seed=11  (deterministic)
+config   alpha=0.01  power=0.8  bootstrap=2000  seed=7
+         sha256:474a379565cb
+version  evalassay 0.1.0  numpy 2.2.1  python 3.13.14  scipy 1.17.1
+
+Reported score                                  0.7200
+Chance (uniform guessing)                       0.2500
+------------------------------------------------------------------------------
+  stronger_distractor         -0.0493  [0.0318, 0.0725]  charged
+  neutral_reframing           -0.1166  [0.0873, 0.1525]  charged
+  permute_options                   -  not established (MDE 0.0445)
+                                       adjusted p 0.9595 exceeds alpha 0.0100
+------------------------------------------------------------------------------
+  Assayed capability                            0.5541
+  Purity (share of the score that survived)      77.0%
+
+Blind accuracy - the question removed entirely
+------------------------------------------------------------------------------
+  accuracy with no question    0.3680  [0.3115, 0.4200]
+  above chance by              0.1180
+  On those items the model is not answering the question, because there
+  is no question. This is a floor, not part of the decomposition.
+
+Benchmark defects - measured without any model
+------------------------------------------------------------------------------
+  position_skew                     -  not established
+  longest_answer                    -  not established
+  choices_only                      -  not established
+  near_duplicate                    -  not established
+
+  These describe the benchmark, not the model, so they do not move the
+  assayed score above.
+
+
+An artifact that was planted should be charged; one that was not should
+read 'not established'. That is the whole claim, and you have just run it.
