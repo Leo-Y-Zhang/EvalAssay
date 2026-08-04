@@ -40,10 +40,10 @@ jobs:
           python -m pip install -e ".[probe,dev]"
 
       - name: Lint
-        run: python -m ruff check src tests
+        run: python -m ruff check src tests verify.py
 
       - name: Format check
-        run: python -m ruff format --check src tests
+        run: python -m ruff format --check src tests verify.py
 
       - name: Types
         run: python -m mypy

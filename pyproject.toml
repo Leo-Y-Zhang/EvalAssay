@@ -49,6 +49,7 @@ evalassay = ["py.typed"]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+extend-include = ["verify.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF", "ANN", "D", "PL", "C4", "PT"]
@@ -76,7 +77,7 @@ convention = "google"
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "verify.py"]
 warn_unreachable = true
 disallow_any_generics = true
 
