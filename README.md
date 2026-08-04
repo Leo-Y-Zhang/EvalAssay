@@ -56,12 +56,17 @@ thresholds — the manifests agree on both hashes — so the entire **+19.2 poin
 difference is attributable to how the question was put. That is wider than the
 gap between many models on a public leaderboard.
 
-**It replicates.** The same audit on ARC-Challenge gives 0.3720 against 0.5600,
-a **+18.8 point** swing on an independent corpus of different difficulty. And
-the only run in which the model demonstrably beats chance *with the question
-removed entirely* is a labelled one — under `cloze` on ARC-Challenge it scores
-below chance. Presentation does not merely inflate the score; it manufactures
-the part of the score that does not need the question.
+**It replicates on three corpora:**
+
+| Corpus | `cloze` | `labelled` | gap |
+|---|---|---|---|
+| ARC-Easy | 0.5520 | 0.7440 | **+19.2** |
+| ARC-Challenge | 0.3720 | 0.5600 | **+18.8** |
+| MMLU | 0.3120 | 0.4200 | **+10.8** |
+
+The magnitude is not constant — MMLU's gap is about half ARC's — so what is
+claimed is the direction, which held everywhere, and a smallest observed gap of
+eleven points.
 
 Neither number is the right one. A benchmark score is not a property of a model
 alone; it is a property of a model *and* a presentation, and the presentation is
@@ -89,6 +94,12 @@ artifact. Folded into the decomposition it would have been mistaken for
 capability and never surfaced.
 
 (p = 0.20 means *not distinguished from zero here*, not *shown to be zero*.)
+
+**And across all six runs, every question-independent result is a labelled one.**
+Both runs where the model demonstrably beats chance with no question are
+labelled; no continuation-scored run clears chance on any corpus, one of them
+falling below it. Scoring options one at a time gives a model nothing to compare;
+showing them together lets it pick whichever most resembles an answer.
 
 Full numbers, reproduce commands and caveats: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
