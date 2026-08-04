@@ -146,6 +146,16 @@ simulation's own mechanism — must fall inside the interval the audit reports:
 These run in continuous integration on every commit. A calibration that only runs
 when someone remembers to ask is not a calibration.
 
+**And the error characteristic is measured, not asserted.** Across 150 clean
+synthetic corpora at a nominal 1% family-wise threshold, some detector fired on
+**4 of 150** (2.67%, 99% interval [0.80%, 8.55%]); across 60 clean corpora
+paired with an artifact-free model, the decomposition charged something on
+**0 of 60**. The point estimate sits above nominal, and `choices_only` accounts
+for most of it because cross-validated predictions are not quite the independent
+draws its null assumes. That is published in
+[docs/FINDINGS.md](docs/FINDINGS.md) rather than tuned away — an instrument's
+error rate is a property to measure and report, not a number to make look good.
+
 **Calibration produced a result of its own:** a model with a strong positional
 preference is charged *nothing* when the benchmark's key is uniform — correctly,
 because always answering position one scores exactly chance whether or not the

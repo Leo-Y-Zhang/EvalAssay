@@ -135,6 +135,35 @@ Each planted value is derived in closed form from the simulated model's own
 mechanism and asserted to fall inside the interval the audit reports. The
 Shapley shares sum to the observed drop exactly on every run.
 
+### The measured false-positive rate
+
+Silence is only worth anything if it is quantified. Across **150 clean synthetic
+corpora** of 500 items each, at a nominal family-wise alpha of 0.01:
+
+| Detector | Fired on | Rate | 99% interval |
+|---|---|---|---|
+| `position_skew` | 1 of 150 | 0.67% | [0.08%, 5.43%] |
+| `longest_answer` | 0 of 150 | 0.00% | [0.00%, 4.24%] |
+| `choices_only` | 3 of 150 | 2.00% | [0.51%, 7.56%] |
+| `near_duplicate` | 0 of 150 | 0.00% | [0.00%, 4.24%] |
+| **any detector** | 4 of 150 | **2.67%** | [0.80%, 8.55%] |
+
+And across 60 clean corpora paired with a simulated model carrying **no
+artifacts at all**, the model-side decomposition charged something on **0 of 60**
+runs.
+
+The family-wise interval contains the nominal 1%, so the deviation is not
+statistically significant. But the point estimate is above nominal and
+`choices_only` accounts for most of it, which has a mechanical explanation worth
+stating: that detector's randomisation null treats per-item outcomes as
+independent draws, while cross-validated predictions are correlated because the
+folds share training data. The test is therefore mildly anti-conservative, and
+its findings should be read as slightly weaker evidence than its p-value
+suggests.
+
+This is published rather than tuned away. An instrument's error characteristic
+is a property to measure and report, not a number to make look good.
+
 **Calibration produced a methodological result of its own.** A model with a
 30% positional preference is charged *nothing* when the benchmark's key is
 uniform — correctly, because always answering position one scores exactly chance

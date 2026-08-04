@@ -99,6 +99,14 @@ where every candidate replacement already appears among the options. Those items
 contribute zero to that share, which is correct, but it means the effective
 sample size for that player is smaller than the item count.
 
+**The choices-only probe is mildly anti-conservative.** Its randomisation null
+treats per-item outcomes as independent draws at chance, but cross-validated
+predictions are correlated because the folds share training data. Measured over
+150 clean corpora it fired on 2.0% of them against a nominal 1%, which is not a
+statistically significant excess but is the largest contributor to the
+family-wise rate of 2.7%. Treat a marginal finding from this detector as weaker
+evidence than its p-value implies.
+
 **Bootstrap p-values are approximations.** They are coherent with the intervals
 they accompany and corrected for multiplicity, but they are not exact tests. The
 gate's requirement that the interval also exclude zero exists partly to stop a

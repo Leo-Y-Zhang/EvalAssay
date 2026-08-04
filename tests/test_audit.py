@@ -210,6 +210,37 @@ def test_calibration_two_artifacts_are_separated() -> None:
 
 
 # --------------------------------------------------------------------------
+# The measured false-positive rate
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_calibration_false_positive_rate_stays_bounded() -> None:
+    """The instrument's error characteristic, measured rather than asserted.
+
+    A larger sweep of 150 clean corpora put the family-wise rate at 2.7 per cent
+    against a nominal 1 per cent, with a 99 per cent interval of [0.8, 8.5]. The
+    bound here is deliberately looser than that measurement so the test does not
+    flake, while still failing loudly if a change makes a detector fire on clean
+    data several times more often than it should.
+    """
+    from evalassay.pathology import run_all as run_detectors
+
+    seeds = 40
+    fired = 0
+    for seed in range(seeds):
+        corpus = generate(CorpusSpec(n_items=500, n_choices=4, seed=seed))
+        report = run_detectors(corpus, seed=5000 + seed)
+        if any(f.verdict is Verdict.ESTABLISHED for f in report.findings):
+            fired += 1
+
+    assert fired / seeds <= 0.15, (
+        f"{fired} of {seeds} clean corpora produced a finding; the measured rate is "
+        "about 0.03, so this is a regression rather than noise"
+    )
+
+
+# --------------------------------------------------------------------------
 # Interventions that cannot bite against a given backend
 # --------------------------------------------------------------------------
 
