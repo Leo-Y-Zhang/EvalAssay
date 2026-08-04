@@ -58,6 +58,30 @@ def test_tie_breaking_does_not_always_pick_position_zero() -> None:
     assert len(chosen) > 1
 
 
+def test_tie_breaking_picks_the_same_text_however_the_options_are_ordered() -> None:
+    # The property the whole audit leans on. If rotating an item could change
+    # which tied option wins, the permutation intervention would be measuring a
+    # positional artifact manufactured by the tie-break rather than by the model.
+    choices = ["alpha", "beta", "gamma", "delta"]
+    scores = np.zeros(4)
+    picked = {
+        tuple(choices[shift:] + choices[:shift])[
+            break_ties(scores, "q", choices[shift:] + choices[:shift])
+        ]
+        for shift in range(4)
+    }
+    assert len(picked) == 1, f"tie-break depends on option order: {picked}"
+
+
+def test_tie_breaking_among_a_subset_ignores_the_untied_options() -> None:
+    # Only the tied options take part, so an unrelated option moving cannot
+    # change the outcome.
+    scores = np.array([1.0, 1.0, 0.0, 0.0])
+    first = ["alpha", "beta", "gamma", "delta"]
+    second = ["alpha", "beta", "delta", "gamma"]
+    assert first[break_ties(scores, "q", first)] == second[break_ties(scores, "q", second)]
+
+
 def test_tie_breaking_depends_on_the_prompt_not_the_position() -> None:
     left = break_ties(np.zeros(4), "question one", ["a", "b", "c", "d"])
     right = break_ties(np.zeros(4), "question two", ["a", "b", "c", "d"])

@@ -9,11 +9,12 @@ would report perfect accuracy in every condition. The contract is enforced by a
 test that alters ``answer_index`` and requires the returned scores to be
 identical, which every real backend must pass.
 
-Ties are broken by a hash of the prompt rather than by taking the first maximum.
-Taking the first would make any scorer that cannot separate the options answer
-position zero every time, which the audit would then measure as a positional
-preference the model does not have - manufacturing the very artifact it is
-supposed to detect.
+Ties are broken by hashing each tied option's own text, never by taking the
+first maximum and never by anything that depends on option order. Taking the
+first would make a scorer that cannot separate the options answer position zero
+every time, which the audit would measure as a positional preference the model
+does not have; keying on the ordered list would let a rotation change the winner.
+Both would manufacture the very artifact this package exists to detect.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from evalassay.hashing import prompt_digest
+from evalassay.hashing import normalise_text, prompt_digest
 from evalassay.types import Item
 
 FloatArray = NDArray[np.float64]
@@ -63,12 +64,44 @@ class Scorer(Protocol):
         ...
 
 
-def break_ties(scores: FloatArray, question: str, choices: Sequence[str]) -> int:
-    """Choose an option from a score vector, breaking ties by prompt hash.
+def _tie_break_key(question: str, choice: str) -> str:
+    """Order-invariant sort key for one tied option.
 
-    The tie-break is a deterministic function of the prompt, so it is stable
-    across runs, and it is unrelated to option position, so it cannot be
-    mistaken for a positional preference.
+    Depends on the question and on the option's own text, and on nothing about
+    where the option sits.
+
+    Args:
+        question: The question as presented.
+        choice: The option's text.
+
+    Returns:
+        A hex digest to sort by.
+    """
+    payload = f"{normalise_text(question)}\x00{normalise_text(choice)}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def break_ties(scores: FloatArray, question: str, choices: Sequence[str]) -> int:
+    """Choose an option from a score vector, breaking ties by option identity.
+
+    Ties are resolved by hashing each tied option's *own* text together with the
+    question, and taking the lowest digest. The result is deterministic, varies
+    from item to item, and - the property that matters - **does not depend on
+    the order the options appear in**.
+
+    An earlier version hashed the whole ordered option list and used the result
+    to index into the tied set. That was a position dependence living inside the
+    mechanism meant to be free of one: rotating an item's options could change
+    which tied option won, so the permutation intervention was not perfectly
+    inert under continuation scoring even though scoring options independently
+    means position cannot reach the model at all. The leak was small - bounded by
+    the runs at exactly zero on one corpus and 0.0011 on another - but it was a
+    positional artifact manufactured by the instrument, which is precisely the
+    class of error this project exists to object to.
+
+    Taking the first maximum instead would be far worse: any scorer that cannot
+    separate the options would answer position zero every time, and the audit
+    would measure that as a positional preference the model does not have.
 
     Args:
         scores: One score per option.
@@ -90,9 +123,10 @@ def break_ties(scores: FloatArray, question: str, choices: Sequence[str]) -> int
     if best.size == 1:
         return int(best[0])
 
-    digest = prompt_digest("tie-break", question, choices)
-    offset = int(hashlib.sha256(digest.encode("utf-8")).hexdigest(), 16)
-    return int(best[offset % best.size])
+    return min(
+        (int(index) for index in best),
+        key=lambda index: _tie_break_key(question, choices[index]),
+    )
 
 
 def predict(scorer: Scorer, item: Item) -> int:

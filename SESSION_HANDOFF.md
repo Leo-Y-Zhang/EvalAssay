@@ -14,13 +14,11 @@ files tracked, correct identity on author and committer, no AI trailers - so it
 can be made public as-is with no history rewrite. That decision is the owner's
 and was deliberately not made here.
 
-**Known next change, deliberately not made:** tie-breaking hashes the whole
-ordered option list, so an exact tie can resolve differently after a rotation
-and the inert detection is slightly blunted under continuation scoring. Bounded
-by the runs at exactly zero on ARC-Easy and 0.0011 on ARC-Challenge. Keying the
-tie-break on the option's own text would remove it. It was not changed while
-runs were in flight, because altering scoring would have de-synced the findings
-from the code that produced them.
+**Fixed since v1:** tie-breaking now keys on each tied option's own text rather
+than on the whole ordered option list, so it is order-invariant and the
+permutation intervention can no longer see a positional artifact manufactured by
+the instrument. The committed calibration example is unchanged, because the
+oracle emits one-hot scores and so never ties.
 
 ## What was measured
 
