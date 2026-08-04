@@ -128,6 +128,13 @@ distinction survives being machine-read.
 small to measure, and the report lists them as not measured. A question never
 asked must not read as a question asked and answered.
 
+**Purity is not "the share of the score that is real".** It is the share that
+survived *the artifacts this audit tests for*. Both ARC-Easy runs came out at
+100% purity while differing from each other by 19 points, because presentation
+is not one of the three players and so sits entirely outside the decomposition.
+Read a purity figure as "none of the three artifacts was established here", never
+as "this score is entirely genuine".
+
 **Purity is not a quality score for a model.** It is the fraction of one number
 on one benchmark that survived one audit. A model with low purity on a defective
 benchmark may be perfectly good; the benchmark is what the finding is about.

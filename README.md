@@ -41,6 +41,25 @@ heavier dependencies are optional and imported only inside the functions that
 need them, which a test enforces by reading the source rather than trusting
 whatever happens to be installed.
 
+### And nineteen points of a real score turned out to be presentation
+
+Qwen2.5-0.5B-Instruct, 250 ARC-Easy items, same seed, audited twice with only
+the *presentation* changed:
+
+| | score |
+|---|---|
+| options scored as continuations (`cloze`) | 0.5520 |
+| options shown as a labelled list (`labelled`) | **0.7440** |
+
+`assay compare` confirms both runs consumed an identical corpus under identical
+thresholds — the manifests agree on both hashes — so the entire **+19.2 point**
+difference is attributable to how the question was put. That is wider than the
+gap between many models on a public leaderboard.
+
+Neither number is the right one. A benchmark score is not a property of a model
+alone; it is a property of a model *and* a presentation, and the presentation is
+rarely stated next to the score.
+
 Full numbers, reproduce commands and caveats: **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ---
