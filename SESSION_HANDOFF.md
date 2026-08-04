@@ -138,6 +138,12 @@ survives the audit.
   Blind accuracy of 0.316 with interval [0.244, 0.392] against chance 0.250 was
   being narrated as "the model is not answering the question"; the interval
   includes chance, so that was unsupported.
+- **A locally green tree is not a green build.** The type check was pinned to the
+  minimum supported Python, which made mypy read the installed third-party stubs
+  under older language rules; modern numpy stubs need 3.12 syntax, so the job on
+  the newest interpreter failed inside numpy's own stub file while the oldest
+  passed. Local runs missed it because the local numpy was older than the one CI
+  installs. **Check `gh run list` before believing a tree is healthy.**
 - **The repo is born clean and has been scanned:** no machine paths, no personal
   identifiers, no other project names, no agent files tracked, correct identity
   on author and committer, no AI trailers. It can be flipped public as-is.
