@@ -35,10 +35,10 @@ Blind accuracy - the question removed entirely
 
 Benchmark defects - measured without any model
 ------------------------------------------------------------------------------
-  position_skew                     -  not established
-  longest_answer                    -  not established
-  choices_only                      -  not established
-  near_duplicate                    -  not established
+  position_skew                     -  not established (MDE 0.0531)
+  longest_answer                    -  not established (MDE 0.0000)
+  choices_only                      -  not established (MDE 0.0650)
+  near_duplicate                    -  not established (MDE 0.0087)
 
   These describe the benchmark, not the model, so they do not move the
   assayed score above.

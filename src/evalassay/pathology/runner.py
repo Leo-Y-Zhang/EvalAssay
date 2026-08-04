@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
+from scipy import stats as sps
 
 from evalassay.pathology.base import Detector, RawFinding
 from evalassay.pathology.choices_only import ChoicesOnly
@@ -25,6 +26,7 @@ from evalassay.pathology.near_duplicate import NearDuplicate, deduplicated
 from evalassay.pathology.position_skew import PositionSkew
 from evalassay.stats.decision import GateConfig, decide
 from evalassay.stats.multiplicity import holm_bonferroni
+from evalassay.stats.paired import mde_from_standard_error
 from evalassay.types import Finding, ItemSet, Verdict
 
 _SEED_MODULUS = 2**32
@@ -134,6 +136,7 @@ def run_all(
             estimate=finding.estimate,
             verdict=decide(finding.estimate, adjusted_p, gate).verdict,
             adjusted_p=adjusted_p,
+            mde=_mde_from_interval(finding, gate),
             detail=_with_reason(finding, adjusted_p, gate),
         )
         for finding, adjusted_p in zip(raw, adjusted, strict=True)
@@ -141,6 +144,36 @@ def run_all(
     return PathologyReport(
         findings=findings, skipped=tuple(skipped), duplicates_removed=duplicates_removed
     )
+
+
+def _mde_from_interval(finding: RawFinding, gate: GateConfig) -> float:
+    """Smallest effect this corpus size could have detected.
+
+    Detectors report intervals rather than standard errors, so the standard
+    error is recovered from the interval's half-width before the usual formula
+    is applied.
+
+    Reporting this is what makes a null finding informative. "Nothing found" is
+    equally consistent with a clean benchmark and with a sample too small to
+    tell, and only the minimum detectable effect distinguishes them.
+
+    For the duplicate census the figure should be read as the resolution of the
+    count rather than as a power calculation; the interval's upper bound, which
+    the finding already carries, is the more meaningful answer to how much could
+    be hiding.
+
+    Args:
+        finding: The raw finding.
+        gate: Pre-registered thresholds.
+
+    Returns:
+        The minimum detectable effect, or ``0.0`` if the interval has no width.
+    """
+    half_width = (finding.estimate.ci_high - finding.estimate.ci_low) / 2.0
+    if half_width <= 0.0:
+        return 0.0
+    z_alpha = float(sps.norm.ppf(1.0 - gate.alpha / 2.0))
+    return mde_from_standard_error(half_width / z_alpha, gate.alpha, gate.power)
 
 
 def _with_reason(finding: RawFinding, adjusted_p: float, gate: GateConfig) -> str:

@@ -111,6 +111,30 @@ def item_digest(item: Item) -> str:
     return _digest(payload)
 
 
+def stem_digest(item: Item) -> str:
+    """Hash what a model is shown, excluding the answer key.
+
+    Two items with the same digest here pose an identical question with
+    identical options. If their keys then differ, the benchmark contradicts
+    itself on them, and that conclusion needs no similarity threshold and no
+    judgement call - which is exactly why the key is left out of this hash
+    rather than folded in as it is for :func:`item_digest`.
+
+    Args:
+        item: The item to hash.
+
+    Returns:
+        A prefixed hex digest.
+    """
+    payload = stable_json(
+        {
+            "question": normalise_text(item.question),
+            "choices": [normalise_text(choice) for choice in item.choices],
+        }
+    )
+    return _digest(payload)
+
+
 def corpus_hash(item_set: ItemSet) -> str:
     """Hash a whole corpus, including its name and item order.
 

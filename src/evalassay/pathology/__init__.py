@@ -20,7 +20,13 @@ from evalassay.pathology.base import (
 )
 from evalassay.pathology.choices_only import ChoicesOnly
 from evalassay.pathology.longest_answer import LongestAnswer
-from evalassay.pathology.near_duplicate import JACCARD_THRESHOLD, NearDuplicate, jaccard
+from evalassay.pathology.near_duplicate import (
+    JACCARD_THRESHOLD,
+    NearDuplicate,
+    contradiction_groups,
+    jaccard,
+    shingles,
+)
 from evalassay.pathology.position_skew import PositionSkew, total_variation
 from evalassay.pathology.runner import (
     PathologyReport,
@@ -37,9 +43,11 @@ __all__ = [
     "PathologyReport",
     "PositionSkew",
     "RawFinding",
+    "contradiction_groups",
     "default_detectors",
     "jaccard",
     "run_all",
+    "shingles",
     "tokenise",
     "total_variation",
     "wilson_interval",

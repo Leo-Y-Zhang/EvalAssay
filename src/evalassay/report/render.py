@@ -182,7 +182,9 @@ def render_findings(report: AuditReport) -> list[str]:
             )
             lines.append(f"  {'':<26}{'':>9}  {finding.detail}")
         else:
-            lines.append(f"  {finding.detector:<26}{'-':>9}  not established")
+            lines.append(
+                f"  {finding.detector:<26}{'-':>9}  not established (MDE {finding.mde:.4f})"
+            )
     lines.append("")
     lines.append("  These describe the benchmark, not the model, so they do not move the")
     lines.append("  assayed score above.")

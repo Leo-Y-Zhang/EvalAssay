@@ -227,6 +227,10 @@ class Finding:
         estimate: Effect size, interval and p-value for the detector statistic.
         verdict: Whether the finding cleared the default-deny gate.
         adjusted_p: Family-wise adjusted p-value across the detector family.
+        mde: Minimum effect this corpus size could have detected. Without it, a
+            null finding says only that nothing was found, which is compatible
+            with the benchmark being clean and with the sample being too small
+            to tell. The distinction is the whole point of reporting one.
         detail: Optional human-readable context, such as example item ids.
     """
 
@@ -235,6 +239,7 @@ class Finding:
     estimate: Estimate
     verdict: Verdict
     adjusted_p: float
+    mde: float = 0.0
     detail: str = ""
 
 

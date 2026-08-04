@@ -36,6 +36,7 @@ from evalassay.corpus.loaders import (
     load_hellaswag_jsonl,
     load_mmlu_csv,
     load_mmlu_directory,
+    load_mmlu_parquet,
     load_truthfulqa_mc_jsonl,
 )
 from evalassay.corpus.synthetic import CorpusSpec, generate
@@ -52,6 +53,7 @@ LOADERS: Final = {
     "hellaswag": load_hellaswag_jsonl,
     "mmlu-csv": load_mmlu_csv,
     "mmlu-dir": load_mmlu_directory,
+    "mmlu-parquet": load_mmlu_parquet,
     "truthfulqa": load_truthfulqa_mc_jsonl,
     "canonical": read_jsonl,
 }
@@ -203,7 +205,10 @@ def cmd_pathology(args: argparse.Namespace) -> int:
                 f"  {'':<20}{'':>9}  {finding.detail}\n"
             )
         else:
-            sys.stdout.write(f"  {finding.detector:<20}{'-':>9}  not established\n")
+            sys.stdout.write(
+                f"  {finding.detector:<20}{'-':>9}  "
+                f"not established; an effect of {finding.mde:.4f} would have shown\n"
+            )
     for name in result.skipped:
         sys.stdout.write(f"  {name:<20}{'-':>9}  not measured on a corpus this small\n")
     sys.stdout.write("\n")

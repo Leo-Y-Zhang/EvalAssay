@@ -24,6 +24,7 @@ from evalassay.corpus.loaders import (
     load_hellaswag_jsonl,
     load_mmlu_csv,
     load_mmlu_directory,
+    load_mmlu_parquet,
     load_truthfulqa_mc_jsonl,
 )
 from evalassay.corpus.synthetic import (
@@ -50,6 +51,7 @@ __all__ = [
     "load_hellaswag_jsonl",
     "load_mmlu_csv",
     "load_mmlu_directory",
+    "load_mmlu_parquet",
     "load_truthfulqa_mc_jsonl",
     "read_jsonl",
     "record_to_item",

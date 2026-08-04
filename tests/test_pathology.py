@@ -23,10 +23,13 @@ from evalassay.pathology.base import tokenise, wilson_interval
 from evalassay.pathology.choices_only import ChoicesOnly
 from evalassay.pathology.longest_answer import LongestAnswer
 from evalassay.pathology.near_duplicate import (
+    JACCARD_THRESHOLD,
     NearDuplicate,
+    contradiction_groups,
     deduplicated,
     exact_duplicate_groups,
     jaccard,
+    shingles,
 )
 from evalassay.pathology.position_skew import PositionSkew, total_variation
 from evalassay.pathology.runner import default_detectors
@@ -246,18 +249,56 @@ def test_total_variation_is_scale_invariant() -> None:
     assert total_variation(counts) == pytest.approx(total_variation(scaled))
 
 
+def _sh(*runs: str) -> frozenset[tuple[str, ...]]:
+    """Build a shingle set from whitespace-separated runs."""
+    return frozenset(tuple(run.split()) for run in runs)
+
+
 @pytest.mark.parametrize(
     ("left", "right", "expected"),
     [
-        (frozenset("abc"), frozenset("abc"), 1.0),
-        (frozenset("abc"), frozenset("def"), 0.0),
-        (frozenset("abcd"), frozenset("abef"), 2 / 6),
+        (_sh("a b c"), _sh("a b c"), 1.0),
+        (_sh("a b c"), _sh("d e f"), 0.0),
+        (_sh("a b c", "b c d"), _sh("a b c", "x y z"), 1 / 3),
         (frozenset(), frozenset(), 0.0),
-        (frozenset("abc"), frozenset(), 0.0),
+        (_sh("a b c"), frozenset(), 0.0),
     ],
 )
-def test_jaccard(left: frozenset[str], right: frozenset[str], expected: float) -> None:
+def test_jaccard(
+    left: frozenset[tuple[str, ...]], right: frozenset[tuple[str, ...]], expected: float
+) -> None:
     assert jaccard(left, right) == pytest.approx(expected)
+
+
+def test_shingles_keep_word_order() -> None:
+    # The correction that motivated shingles: two items whose token sets are
+    # identical but whose word order differs must not look identical.
+    left = Item(item_id="a", question="the function f must be", choices=("f", "g"), answer_index=0)
+    right = Item(item_id="b", question="the function g must be", choices=("f", "g"), answer_index=0)
+    assert jaccard(shingles(left), shingles(right)) < JACCARD_THRESHOLD
+
+
+def test_a_short_item_still_produces_a_shingle() -> None:
+    tiny = Item(item_id="t", question="hi", choices=("a", "b"), answer_index=0)
+    assert shingles(tiny)
+
+
+def test_contradictions_need_identical_questions_not_similar_ones() -> None:
+    # Fuzzy similarity produced false contradictions on real data, so this claim
+    # rests on exact identity of question and options.
+    left = Item(item_id="a", question="which letter?", choices=("x", "y"), answer_index=0)
+    right = Item(item_id="b", question="which letter?", choices=("x", "y"), answer_index=1)
+    nearly = Item(item_id="c", question="which letter now?", choices=("x", "y"), answer_index=1)
+
+    found = contradiction_groups(ItemSet(name="c", items=(left, right, nearly)))
+    assert len(found) == 1
+    assert sorted(next(iter(found.values()))) == [0, 1]
+
+
+def test_agreeing_repeats_are_not_contradictions() -> None:
+    left = Item(item_id="a", question="q", choices=("x", "y"), answer_index=0)
+    right = Item(item_id="b", question="q", choices=("x", "y"), answer_index=0)
+    assert contradiction_groups(ItemSet(name="c", items=(left, right))) == {}
 
 
 def test_tokenise_lowercases_and_keeps_internal_punctuation() -> None:
@@ -340,7 +381,7 @@ def test_near_duplicate_flags_contradictory_keys() -> None:
     corpus = ItemSet(name="c", items=(left, right, *filler))
     finding = NearDuplicate().run(corpus, np.random.default_rng(0))
     assert finding is not None
-    assert "contradicts itself" in finding.detail
+    assert "disagree about the answer" in finding.detail
 
 
 def test_detectors_expose_whether_they_assume_independent_items() -> None:

@@ -74,6 +74,7 @@
         "p_value": 0.5724067044708798,
         "point": -0.005126000000000002
       },
+      "minimum_detectable_effect": 0.053069518735785075,
       "verdict": "not_established"
     },
     {
@@ -89,6 +90,7 @@
         "p_value": 1.0,
         "point": 0.0
       },
+      "minimum_detectable_effect": 0.0,
       "verdict": "not_established"
     },
     {
@@ -104,21 +106,23 @@
         "p_value": 0.31917020744813795,
         "point": -0.02
       },
+      "minimum_detectable_effect": 0.06501016045133672,
       "verdict": "not_established"
     },
     {
       "adjusted_p": 1.0,
       "description": "the benchmark contains repeated items, which over-weight whatever they test and, where their keys disagree, make full marks impossible",
-      "detail": "0 of 500 items are repeats or near-repeats; 0 redundant copies are identical after normalisation; 0 further pairs exceed Jaccard 0.9 without being identical; not established: adjusted p 1.0000 exceeds alpha 0.0100",
+      "detail": "0 of 500 items are repeats, contradictions or near-repeats; 0 redundant copies are identical after normalisation; 0 further pairs exceed shingle Jaccard 0.9 without being identical; that pass is approximate and worth a human look rather than a conclusion; not established: adjusted p 1.0000 exceeds alpha 0.0100",
       "detector": "near_duplicate",
       "estimate": {
         "ci_high": 0.01309601183324378,
         "ci_low": 0.0,
-        "method": "digest grouping plus rarest-token candidate Jaccard; census",
+        "method": "digest grouping for exact and contradictory repeats; rarest-shingle candidates with Jaccard for near repeats; census",
         "n": 500,
         "p_value": 1.0,
         "point": 0.0
       },
+      "minimum_detectable_effect": 0.008687488066854923,
       "verdict": "not_established"
     }
   ],

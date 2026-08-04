@@ -88,6 +88,7 @@ def finding_to_dict(finding: Finding) -> dict[str, Any]:
         "verdict": finding.verdict.value,
         "estimate": estimate_to_dict(finding.estimate),
         "adjusted_p": _number(finding.adjusted_p),
+        "minimum_detectable_effect": _number(finding.mde),
         "detail": finding.detail,
     }
 

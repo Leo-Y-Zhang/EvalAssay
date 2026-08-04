@@ -360,3 +360,42 @@ def load_arc_parquet(path: Path) -> ItemSet:
         )
 
     return ItemSet(name=f"arc:{path.parent.name}", items=tuple(items))
+
+
+def load_mmlu_parquet(path: Path) -> ItemSet:
+    """Load MMLU from the parquet form the dataset hub distributes.
+
+    The parquet layout differs from the headerless CSV the benchmark originally
+    shipped: options are a list column and the key is already a zero-based
+    integer, so no label resolution is needed.
+
+    Args:
+        path: The parquet file.
+
+    Returns:
+        The corpus, with each item's subject preserved so a sample can be
+        stratified across the benchmark's many topics.
+
+    Raises:
+        ImportError: If pandas is unavailable.
+    """
+    try:
+        import pandas as pd  # noqa: PLC0415 - optional dependency, imported on demand
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise ImportError("reading parquet needs pandas; install it or use the CSV loader") from exc
+
+    frame = pd.read_parquet(path)
+    items: list[Item] = []
+    for position, row in enumerate(frame.itertuples(index=False), start=1):
+        subject = str(row.subject)
+        items.append(
+            Item(
+                item_id=f"{subject}-{position:05d}",
+                question=str(row.question),
+                choices=tuple(str(choice) for choice in row.choices),
+                answer_index=int(row.answer),
+                subject=subject,
+            )
+        )
+
+    return ItemSet(name=f"mmlu:{path.stem.split('-')[0]}", items=tuple(items))
