@@ -174,7 +174,95 @@ produces both.
 
 ---
 
-## 3. What is not claimed
+## 3. A model audited on a real benchmark
+
+**Qwen2.5-0.5B-Instruct on ARC-Easy**, 250 items stratified from the validation
+split, seed 7, thresholds at their defaults. The same model and the same items
+were audited twice, changing only how the question is put.
+
+| | `cloze` | `labelled` |
+|---|---|---|
+| Reported score | 0.5520 | **0.7440** |
+| Assayed capability | 0.5520 | 0.7440 |
+| Purity | 100% | 100% |
+| Artifacts charged | none | none |
+| Blind accuracy | 0.3160 [0.2440, 0.3920] | 0.3240 [0.2480, 0.4000] |
+
+```bash
+assay audit arc-easy.jsonl --model Qwen/Qwen2.5-0.5B-Instruct     --style cloze    --items 250 --seed 7 --json cloze.json
+assay audit arc-easy.jsonl --model Qwen/Qwen2.5-0.5B-Instruct     --style labelled --items 250 --seed 7 --json labelled.json
+assay compare cloze.json labelled.json
+```
+
+### Nineteen points of the score is presentation
+
+`compare` confirms the two runs consumed an identical corpus under identical
+thresholds - the manifests agree on both hashes - so the whole difference is
+attributable to the one thing that changed:
+
+```
+                                baseline     variant    difference
+reported score                    0.5520      0.7440       +0.1920
+```
+
+Under `cloze` each option is scored as a continuation and the model never sees
+the options as a list. Under `labelled` they are presented as A to D and the
+model scores the label. Nothing else differs. **The reported score moves 19.2
+points**, which is wider than the gap between many models on a public
+leaderboard.
+
+Neither number is the right one. The point is that a benchmark score is not a
+property of a model alone; it is a property of a model and a presentation, and
+the presentation is rarely stated alongside the score.
+
+### The decomposition charged nothing, and that is a limitation worth naming
+
+Both runs came out at 100% purity. Read carelessly, "100% pure, twice" alongside
+"the two scores differ by 19 points" looks like a contradiction. It is not, and
+the reason matters:
+
+**purity is a statement about the artifacts the audit looks for.** Presentation
+is not one of the three players, so a difference that large can sit entirely
+outside the decomposition. The comparison is what catches it. A purity figure
+should never be read as "this score is 100% real" - only as "none of the three
+artifacts tested for was established here".
+
+### The prediction about position, tested in the right direction
+
+The calibration said a positional preference only becomes an artifact when the
+benchmark's key is also skewed. ARC-Easy is the case where it should therefore
+find nothing, and it behaves exactly as predicted at each step:
+
+- The model-free layer establishes **no position skew** on this corpus.
+- Under `cloze`, `permute_options` is reported as **inert against this backend**
+  rather than as not established: scoring options as continuations means
+  position never reaches the model, so nothing could be measured.
+- Under `labelled`, permutation is **not** inert - rotating options does change
+  individual answers, measured separately at 3 of 12 items on a sample - yet its
+  net share is not established, with an adjusted p of 1.00.
+
+That is the predicted pattern: the model is position-sensitive, the benchmark is
+not position-skewed, and so rotation gains and loses in equal measure and no
+artifact exists to charge. The confirming half of the prediction requires a
+benchmark whose key *is* skewed, which is why MMLU is the next corpus.
+
+### An intervention that helped, and was still not charged
+
+Under `cloze`, neutral reframing came out at **-0.0560**: prefixing the question
+with a semantically empty frame made the model *more* accurate, by 5.6 points.
+The gate refused it with "effect does not reduce accuracy; not charged".
+
+This is the deliberate asymmetry doing its job. An intervention that helps is
+reported, so a reader can see it, but it is never allowed to move the assayed
+score - because the audit's output is a criticism, and an instrument that can
+only understate the charge is the right one to reach for.
+
+It is also a finding in its own right about small instruction-tuned models: this
+one is sensitive to framing in a direction that flatters it.
+
+---
+
+## 4. What is not claimed
 
 - No statement here is about training-data contamination. Sensitivity to exact
   wording is one symptom of it, but establishing contamination needs access to
