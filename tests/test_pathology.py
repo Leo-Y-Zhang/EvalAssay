@@ -24,6 +24,7 @@ from evalassay.pathology.choices_only import ChoicesOnly
 from evalassay.pathology.longest_answer import LongestAnswer
 from evalassay.pathology.near_duplicate import (
     JACCARD_THRESHOLD,
+    MAX_CANDIDATES_PER_ITEM,
     NearDuplicate,
     contradiction_groups,
     deduplicated,
@@ -382,6 +383,71 @@ def test_near_duplicate_flags_contradictory_keys() -> None:
     finding = NearDuplicate().run(corpus, np.random.default_rng(0))
     assert finding is not None
     assert "disagree about the answer" in finding.detail
+
+
+_SHARED_TAIL = " ".join(f"w{i}" for i in range(40))
+"""A long shared passage, so two items differing in one word overlap above threshold."""
+
+
+def _ceiling_corpus(*, saturate: bool) -> ItemSet:
+    """A near-repeat pair, optionally preceded by items that exhaust the ceiling.
+
+    Args:
+        saturate: Whether to include enough identical items to push one of them
+            past the per-item candidate ceiling.
+
+    Returns:
+        The corpus. The pair differs only in its first word, so it clears the
+        Jaccard threshold, and each of the pair's rarest shingles is unique to
+        it - the shingles they share are only reached on the second look.
+    """
+    crowd = (
+        tuple(
+            Item(
+                item_id=f"crowd-{i}",
+                question="crowd shared question text repeated many times over",
+                choices=("alpha", "beta"),
+                answer_index=0,
+            )
+            for i in range(MAX_CANDIDATES_PER_ITEM + 2)
+        )
+        if saturate
+        else ()
+    )
+    left = Item(
+        item_id="left", question=f"unia {_SHARED_TAIL}", choices=("alpha", "beta"), answer_index=0
+    )
+    right = Item(
+        item_id="right", question=f"unib {_SHARED_TAIL}", choices=("alpha", "beta"), answer_index=1
+    )
+    padding = tuple(
+        Item(
+            item_id=f"pad-{i}",
+            question=f"padding question number {i}",
+            choices=("alpha", "beta"),
+            answer_index=0,
+        )
+        for i in range(20)
+    )
+    return ItemSet(name="ceiling", items=(*crowd, left, right, *padding))
+
+
+def test_one_saturated_item_does_not_blind_the_scan_that_follows_it() -> None:
+    # Regression: the flag recording that an item had hit the per-item candidate
+    # ceiling was function-scoped and never reset, so it doubled as the loop
+    # control for every item after it. One saturated item therefore cut every
+    # later item off after its single rarest shingle, and a near-repeat pair
+    # whose shared shingles are only reached on the second look went unseen.
+    # The ceiling bounds the work done on one item; hitting it there says
+    # nothing about what the next item deserves.
+    control = NearDuplicate().run(_ceiling_corpus(saturate=False), np.random.default_rng(0))
+    assert control is not None
+    assert "1 further pairs" in control.detail, "the pair must be findable at all"
+
+    crowded = NearDuplicate().run(_ceiling_corpus(saturate=True), np.random.default_rng(0))
+    assert crowded is not None
+    assert "candidate ceiling" in crowded.detail, "the ceiling must actually have been reached"
+    assert "1 further pairs" in crowded.detail, "the same pair went unseen after saturation"
 
 
 def test_detectors_expose_whether_they_assume_independent_items() -> None:

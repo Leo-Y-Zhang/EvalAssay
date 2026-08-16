@@ -216,16 +216,21 @@ def _candidate_pairs(
             continue
         rarest = sorted(item_shingles, key=lambda s: (len(postings[s]), s))[:CANDIDATE_SHINGLES]
         seen: set[int] = set()
+        # The ceiling is per item, so the flag that stops this item's scan must
+        # be too. Reusing the corpus-wide flag as the loop control cut every
+        # later item off after its single rarest shingle.
+        hit_ceiling = False
         for shingle in rarest:
             for other in postings[shingle]:
                 if other == index:
                     continue
                 if len(seen) >= MAX_CANDIDATES_PER_ITEM:
-                    truncated = True
+                    hit_ceiling = True
                     break
                 seen.add(other)
-            if truncated:
+            if hit_ceiling:
                 break
+        truncated = truncated or hit_ceiling
         for other in seen:
             pairs.add((index, other) if index < other else (other, index))
 
