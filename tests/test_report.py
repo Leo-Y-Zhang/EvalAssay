@@ -66,6 +66,7 @@ def _report(
     deterministic: bool = True,
     blind: Estimate | None = None,
     findings: tuple[Finding, ...] = (),
+    skipped: tuple[str, ...] = (),
     reported: float = 0.72,
 ) -> AuditReport:
     components = (
@@ -80,6 +81,7 @@ def _report(
         findings=findings,
         chance_accuracy=0.25,
         blind_accuracy=blind,
+        skipped_detectors=skipped,
     )
 
 
@@ -224,6 +226,32 @@ def test_findings_are_marked_as_describing_the_benchmark() -> None:
 
 def test_the_findings_block_is_omitted_when_the_layer_did_not_run() -> None:
     assert render_findings(_report(findings=())) == []
+
+
+def test_a_detector_that_never_ran_is_named_rather_than_left_out() -> None:
+    # Omitting it entirely is the one presentation that misleads: three rows
+    # under "measured without any model" read as a complete account of the
+    # benchmark, and the detector that was never asked reads as clean.
+    finding = Finding(
+        detector="position_skew",
+        description="key is not uniform",
+        estimate=_estimate(0.2, 0.15, 0.25),
+        verdict=Verdict.ESTABLISHED,
+        adjusted_p=0.0001,
+        detail="most common answer position is 1",
+    )
+    text = "\n".join(
+        render_findings(_report(findings=(finding,), skipped=("choices_only", "longest_answer")))
+    )
+    assert "choices_only" in text
+    assert "longest_answer" in text
+    assert "not measured" in text
+
+
+def test_the_findings_block_appears_for_skipped_detectors_alone() -> None:
+    # Every detector declining is the case where silence is most misleading.
+    text = "\n".join(render_findings(_report(findings=(), skipped=("choices_only",))))
+    assert "choices_only" in text
 
 
 # --------------------------------------------------------------------------

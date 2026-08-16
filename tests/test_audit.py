@@ -26,6 +26,7 @@ from evalassay.audit import AuditConfig, _bootstrap_p_value, inert_players, run_
 from evalassay.corpus.synthetic import CorpusSpec, generate
 from evalassay.intervene.interventions import NeutralReframing
 from evalassay.score.oracle import OracleScorer, OracleSpec
+from evalassay.stats.decision import GateConfig
 from evalassay.types import AuditReport, Verdict
 
 N_ITEMS = 500
@@ -361,3 +362,31 @@ def test_the_pathology_layer_runs_alongside_the_decomposition() -> None:
         "choices_only",
         "near_duplicate",
     }
+    assert report.skipped_detectors == ()
+
+
+def test_a_detector_that_declined_to_run_is_named_in_the_report() -> None:
+    # The runner already distinguishes a detector that looked and found nothing
+    # from one that was never asked, because a corpus can be too small to
+    # cross-validate on. The audit report has to carry that distinction too: a
+    # reader who sees three detectors listed under "measured without any model"
+    # and no mention of the fourth will read the fourth as clean.
+    corpus = generate(CorpusSpec(n_items=30, n_choices=4, seed=3))
+    report = run_audit(
+        corpus,
+        OracleScorer(OracleSpec(skill=0.5, seed=1), corpus),
+        AuditConfig(seed=7, gate=GateConfig(bootstrap_draws=1000)),
+    )
+    assert "choices_only" not in {f.detector for f in report.findings}
+    assert "choices_only" in report.skipped_detectors
+
+
+def test_nothing_is_recorded_as_skipped_when_the_layer_did_not_run() -> None:
+    corpus = generate(CorpusSpec(n_items=30, n_choices=4, seed=3))
+    report = run_audit(
+        corpus,
+        OracleScorer(OracleSpec(skill=0.5, seed=1), corpus),
+        AuditConfig(seed=7, gate=GateConfig(bootstrap_draws=1000), run_pathology_layer=False),
+    )
+    assert report.findings == ()
+    assert report.skipped_detectors == ()

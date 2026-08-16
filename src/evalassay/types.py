@@ -305,6 +305,12 @@ class AuditReport:
             would invert the meaning of the report. What it does reveal is the
             floor: a model scoring well above chance with nothing to answer is,
             on those items, not answering anything.
+        skipped_detectors: Names of model-free detectors that declined to run,
+            usually because the corpus was too small for their statistic.
+            Carried rather than dropped: a reader who sees three detectors
+            listed and no mention of a fourth will take the fourth as clean,
+            which turns a question that was never asked into a question that
+            was asked and answered negatively.
     """
 
     manifest: RunManifest
@@ -314,6 +320,7 @@ class AuditReport:
     findings: tuple[Finding, ...]
     chance_accuracy: float = 0.0
     blind_accuracy: Estimate | None = None
+    skipped_detectors: tuple[str, ...] = ()
 
     @property
     def attributed_points(self) -> float:

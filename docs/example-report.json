@@ -134,9 +134,9 @@
     "corpus_name": "synthetic[seed=11]",
     "evalassay_version": "0.1.0",
     "library_versions": {
-      "numpy": "2.2.1",
+      "numpy": "2.5.2",
       "python": "3.13.14",
-      "scipy": "1.17.1"
+      "scipy": "1.18.0"
     },
     "n_items": 500,
     "power": 0.8,
@@ -147,5 +147,6 @@
   },
   "purity": 0.7695601851851851,
   "reported_score": 0.72,
+  "skipped_detectors": [],
   "total_drop": 0.16549999999999998
 }

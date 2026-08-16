@@ -64,6 +64,19 @@ def test_the_dict_round_trip_agrees_with_the_json_one() -> None:
     assert report_from_dict(report_to_dict(original)) == original
 
 
+def test_a_report_naming_an_unasked_detector_round_trips() -> None:
+    # The detectors that never ran are part of what a saved report means, so
+    # they have to survive the JSON as the components do.
+    corpus = generate(CorpusSpec(n_items=30, n_choices=4, seed=3))
+    small = run_audit(
+        corpus,
+        OracleScorer(OracleSpec(skill=0.4, seed=2), corpus),
+        AuditConfig(seed=7, gate=GateConfig(bootstrap_draws=1000)),
+    )
+    assert small.skipped_detectors
+    assert from_json(to_json(small)) == small
+
+
 def test_a_report_with_every_optional_part_round_trips() -> None:
     corpus = generate(CorpusSpec(n_items=300, n_choices=4, seed=11))
     full = run_audit(

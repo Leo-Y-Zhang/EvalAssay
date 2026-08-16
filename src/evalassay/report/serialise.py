@@ -148,6 +148,7 @@ def report_to_dict(report: AuditReport) -> dict[str, Any]:
             estimate_to_dict(report.blind_accuracy) if report.blind_accuracy else None
         ),
         "findings": [finding_to_dict(f) for f in report.findings],
+        "skipped_detectors": list(report.skipped_detectors),
     }
 
 
@@ -282,6 +283,11 @@ def report_from_dict(data: dict[str, Any]) -> AuditReport:
         findings=findings,
         chance_accuracy=_float(data["chance_accuracy"]),
         blind_accuracy=estimate_from_dict(blind) if blind else None,
+        # Read with a default so reports written before this field existed still
+        # open. Absent is not the same as empty, but a report that predates the
+        # field carries no answer either way and refusing to load it would lose
+        # everything else it does say.
+        skipped_detectors=tuple(str(name) for name in data.get("skipped_detectors", ())),
     )
 
 

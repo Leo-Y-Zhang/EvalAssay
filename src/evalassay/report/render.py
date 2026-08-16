@@ -183,9 +183,11 @@ def render_findings(report: AuditReport) -> list[str]:
         report: The audit result.
 
     Returns:
-        Lines of text, empty if the layer did not run.
+        Lines of text, empty if the layer did not run at all. A layer that ran
+        and had every detector decline still produces a block, since that is a
+        statement about the corpus a reader needs.
     """
-    if not report.findings:
+    if not report.findings and not report.skipped_detectors:
         return []
 
     lines = ["", "Benchmark defects - measured without any model", RULE]
@@ -201,6 +203,11 @@ def render_findings(report: AuditReport) -> list[str]:
             lines.append(
                 f"  {finding.detector:<26}{'-':>9}  not established (MDE {finding.mde:.4f})"
             )
+    # A detector that declined to run is listed too, and in different words. Left
+    # out altogether it would read as a detector that looked and found nothing,
+    # which is the one thing a reader must not conclude from its absence.
+    for name in report.skipped_detectors:
+        lines.append(f"  {name:<26}{'-':>9}  not measured on a corpus this small")
     lines.append("")
     lines.append("  These describe the benchmark, not the model, so they do not move the")
     lines.append("  assayed score above.")

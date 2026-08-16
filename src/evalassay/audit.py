@@ -379,8 +379,15 @@ def run_audit(
         blind = _measure_blind(item_set, scorer, cache, settings, rng)
 
     findings: tuple[Finding, ...] = ()
+    skipped: tuple[str, ...] = ()
     if settings.run_pathology_layer:
-        findings = run_pathology(item_set, settings.seed, settings.gate).findings
+        pathology = run_pathology(item_set, settings.seed, settings.gate)
+        findings = pathology.findings
+        # A detector that declined to run is carried through to the report. The
+        # runner keeps that apart from a detector that ran and found nothing,
+        # and dropping it here would collapse the two by the time anyone read
+        # the result.
+        skipped = pathology.skipped
 
     manifest = RunManifest(
         schema_version=SCHEMA_VERSION,
@@ -406,6 +413,7 @@ def run_audit(
         findings=findings,
         chance_accuracy=item_set.chance_accuracy,
         blind_accuracy=blind,
+        skipped_detectors=skipped,
     )
 
 

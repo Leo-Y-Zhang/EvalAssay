@@ -13,7 +13,7 @@ corpus   synthetic[seed=11]
 model    oracle:skill=0.4,memorisation=0.25,distractor=0.2:seed=11  (deterministic)
 config   alpha=0.01  power=0.8  bootstrap=2000  seed=7
          sha256:474a379565cb
-version  evalassay 0.1.0  numpy 2.2.1  python 3.13.14  scipy 1.17.1
+version  evalassay 0.1.0  numpy 2.5.2  python 3.13.14  scipy 1.18.0
 
 Reported score                                  0.7200
 Chance (uniform guessing)                       0.2500
