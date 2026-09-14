@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from numpy.typing import NDArray
+from scipy import stats as sps
 
 from evalassay.stats.paired import (
     bca_ci,
@@ -154,6 +155,78 @@ def test_bca_rejects_bad_arguments() -> None:
         bca_ci(0.0, _f64([]), _f64([1.0, 2.0]), alpha=0.05)
     with pytest.raises(ValueError, match="alpha"):
         bca_ci(0.0, _f64(np.linspace(0, 1, 10)), _f64(np.linspace(0, 1, 5)), alpha=0.0)
+
+
+def _skewed_sample() -> tuple[float, FloatArray, FloatArray]:
+    """A bounded-average statistic near the edge of its range.
+
+    A 92%-correct item vector, with a paired-bootstrap replicate set and its
+    jackknife -- exactly the shape the module's own docstring says the BCa
+    correction is for. Fixed seeds throughout so the numbers below are
+    exactly reproducible.
+    """
+    rng = np.random.default_rng(12345)
+    n = 40
+    data = (rng.random(n) < 0.92).astype(np.float64)
+    point = float(data.mean())
+
+    counts = bootstrap_counts(n=n, draws=5000, rng=np.random.default_rng(777))
+    replicates = _f64(counts.astype(np.float64).T @ data / n)
+
+    total = data.sum()
+    jackknife = _f64([(total - data[i]) / (n - 1) for i in range(n)])
+    return point, replicates, jackknife
+
+
+def test_bca_ci_matches_first_principles_reference() -> None:
+    # Independently recompute the BCa interval from first principles (not by
+    # calling bca_ci) to check the actual bias/acceleration arithmetic, which
+    # none of the tests above exercise: the symmetric-sample test drives
+    # bias/acceleration to ~0 (collapsing BCa to the plain percentile case),
+    # and the other two only hit the degenerate-fallback branches.
+    point, replicates, jackknife = _skewed_sample()
+    alpha = 0.10
+
+    # Bias-correction z0: the standard-normal quantile at the fraction of
+    # replicates below the point estimate.
+    below = float(np.count_nonzero(replicates < point))
+    proportion = below / replicates.size
+    z0 = float(sps.norm.ppf(proportion))
+
+    # Acceleration a: from the jackknife's third and second central moments
+    # (Efron & Tibshirani's skewness-based estimator).
+    centred = jackknife.mean() - jackknife
+    sum_squares = float(np.sum(centred**2))
+    acceleration = float(np.sum(centred**3)) / (6.0 * sum_squares**1.5)
+
+    def adjusted(quantile: float) -> float:
+        z = float(sps.norm.ppf(quantile))
+        denominator = 1.0 - acceleration * (z0 + z)
+        return float(sps.norm.cdf(z0 + (z0 + z) / denominator))
+
+    low_q = adjusted(alpha / 2.0)
+    high_q = adjusted(1.0 - alpha / 2.0)
+    assert 0.0 < low_q < high_q < 1.0  # sanity: the real correction path runs
+    expected_low, expected_high = np.percentile(replicates, [100.0 * low_q, 100.0 * high_q])
+
+    low, high = bca_ci(point, replicates, jackknife, alpha)
+    assert low == pytest.approx(float(expected_low), abs=1e-9)
+    assert high == pytest.approx(float(expected_high), abs=1e-9)
+
+
+def test_bca_correction_shifts_interval_from_plain_percentile_on_skewed_sample() -> None:
+    # On a genuinely skewed sample (unlike the symmetric-sample test above),
+    # the bias/acceleration correction must move the interval measurably away
+    # from the plain percentile interval it is meant to correct.
+    point, replicates, jackknife = _skewed_sample()
+    alpha = 0.10
+
+    bca_low, bca_high = bca_ci(point, replicates, jackknife, alpha)
+    pct_low, pct_high = percentile_ci(replicates, alpha)
+
+    assert (bca_low, bca_high) != pytest.approx((pct_low, pct_high))
+    assert abs(bca_low - pct_low) > 0.01
+    assert abs(bca_high - pct_high) > 0.01
 
 
 def test_mde_shrinks_with_sample_size() -> None:
