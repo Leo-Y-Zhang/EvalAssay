@@ -63,6 +63,8 @@ def test_rejects_an_out_of_range_adjusted_p_value() -> None:
 def test_config_rejects_thresholds_that_cannot_produce_an_audit() -> None:
     with pytest.raises(ValueError, match="alpha"):
         GateConfig(alpha=0.0)
+    with pytest.raises(ValueError, match="alpha"):
+        GateConfig(alpha=1.0)
     with pytest.raises(ValueError, match="power"):
         GateConfig(power=1.0)
     with pytest.raises(ValueError, match="bootstrap_draws"):
