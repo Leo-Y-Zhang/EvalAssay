@@ -22,6 +22,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import stats as sps
 
+from evalassay.stats.decision import DEFAULT_ALPHA
 from evalassay.types import Estimate, ItemSet
 
 FloatArray = NDArray[np.float64]
@@ -77,12 +78,17 @@ class Detector(Protocol):
         """
         ...
 
-    def run(self, item_set: ItemSet, rng: np.random.Generator) -> RawFinding | None:
+    def run(
+        self, item_set: ItemSet, rng: np.random.Generator, alpha: float = DEFAULT_ALPHA
+    ) -> RawFinding | None:
         """Measure this defect on a corpus.
 
         Args:
             item_set: The corpus to inspect.
             rng: Seeded generator, for detectors that resample.
+            alpha: Two-sided error rate for the interval. The runner passes the
+                gate's, because the gate asks whether this interval excludes
+                zero and reads the minimum detectable effect off its width.
 
         Returns:
             The finding, or ``None`` if the detector does not apply to this

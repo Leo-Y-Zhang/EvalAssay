@@ -54,6 +54,7 @@ import numpy as np
 
 from evalassay.hashing import item_digest, stem_digest
 from evalassay.pathology.base import RawFinding, make_estimate, tokenise, wilson_interval
+from evalassay.stats.decision import DEFAULT_ALPHA
 from evalassay.types import Item, ItemSet
 
 SHINGLE_SIZE: Final = 3
@@ -245,13 +246,16 @@ class NearDuplicate:
     # Repeats are the subject of this detector, so it must see the raw corpus.
     assumes_independent_items: bool = False
 
-    def run(self, item_set: ItemSet, rng: np.random.Generator) -> RawFinding | None:
+    def run(
+        self, item_set: ItemSet, rng: np.random.Generator, alpha: float = DEFAULT_ALPHA
+    ) -> RawFinding | None:
         """Count items that appear more than once.
 
         Args:
             item_set: The corpus.
             rng: Unused; the census is deterministic. Accepted so every detector
                 shares one interface.
+            alpha: Two-sided error rate for the interval on the rate.
 
         Returns:
             The finding, or ``None`` if the corpus is too small.
@@ -291,7 +295,7 @@ class NearDuplicate:
 
         affected = int(np.count_nonzero(involved))
         rate = affected / n_items
-        low, high = wilson_interval(affected, n_items, alpha=0.01)
+        low, high = wilson_interval(affected, n_items, alpha)
 
         detail_parts = [
             f"{affected} of {n_items} items are repeats, contradictions or near-repeats",

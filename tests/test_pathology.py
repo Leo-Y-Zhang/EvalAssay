@@ -34,6 +34,7 @@ from evalassay.pathology.near_duplicate import (
 )
 from evalassay.pathology.position_skew import PositionSkew, total_variation
 from evalassay.pathology.runner import default_detectors
+from evalassay.stats.decision import GateConfig
 from evalassay.types import Item, ItemSet, Verdict
 
 N_ITEMS = 600
@@ -281,6 +282,41 @@ def test_multiplicity_correction_is_applied_across_the_family() -> None:
     report = run_all(generate(_clean()), seed=3)
     for finding in report.findings:
         assert finding.adjusted_p >= finding.estimate.p_value
+
+
+def test_detector_intervals_are_built_at_the_gate_alpha() -> None:
+    # The gate asks whether each interval excludes zero, and the runner reads
+    # the minimum detectable effect off the interval's width assuming it was
+    # built at the gate's alpha. An interval fixed at 99% whatever the gate said
+    # made a looser alpha report a *larger* MDE, which cannot be right: a
+    # looser threshold can only make smaller effects detectable.
+    corpus = generate(
+        CorpusSpec(
+            n_items=400,
+            n_choices=4,
+            seed=3,
+            position_bias=0.1,
+            longest_answer_rate=0.1,
+            choices_only_rate=0.1,
+            duplicate_rate=0.05,
+        )
+    )
+    strict = {f.detector: f for f in run_all(corpus, 7, GateConfig(alpha=0.01)).findings}
+    loose = {f.detector: f for f in run_all(corpus, 7, GateConfig(alpha=0.10)).findings}
+    assert set(strict) == set(loose) == {d.name for d in default_detectors()}
+
+    for name, finding in strict.items():
+        wide, narrow = finding.estimate, loose[name].estimate
+        assert narrow.point == wide.point, name
+        assert narrow.ci_high - narrow.ci_low < wide.ci_high - wide.ci_low, name
+        assert loose[name].mde < finding.mde, name
+
+
+def test_a_detector_run_on_its_own_uses_the_default_gate_alpha() -> None:
+    corpus = generate(CorpusSpec(n_items=N_ITEMS, n_choices=4, seed=4, position_bias=0.2))
+    implicit = PositionSkew().run(corpus, np.random.default_rng(1))
+    explicit = PositionSkew().run(corpus, np.random.default_rng(1), alpha=GateConfig().alpha)
+    assert implicit == explicit
 
 
 def test_established_filters_the_finding_list() -> None:

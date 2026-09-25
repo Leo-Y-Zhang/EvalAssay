@@ -24,6 +24,9 @@ from evalassay.types import Estimate, Verdict
 MIN_BOOTSTRAP_DRAWS: Final = 1000
 """Below this the percentile tails are too coarse for a stable interval."""
 
+DEFAULT_ALPHA: Final = 0.01
+"""Family-wise significance level unless a run pre-registers another."""
+
 
 @dataclass(frozen=True, slots=True)
 class GateConfig:
@@ -48,7 +51,7 @@ class GateConfig:
             deducted.
     """
 
-    alpha: float = 0.01
+    alpha: float = DEFAULT_ALPHA
     power: float = 0.80
     bootstrap_draws: int = 10_000
     min_effect: float = 0.005

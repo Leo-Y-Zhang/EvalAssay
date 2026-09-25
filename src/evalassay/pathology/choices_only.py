@@ -33,6 +33,7 @@ from evalassay.pathology.base import (
     randomisation_p_value,
     tokenise,
 )
+from evalassay.stats.decision import DEFAULT_ALPHA
 from evalassay.types import ItemSet
 
 FloatArray = NDArray[np.float64]
@@ -135,12 +136,15 @@ class ChoicesOnly:
     name: str = "choices_only"
     assumes_independent_items: bool = True
 
-    def run(self, item_set: ItemSet, rng: np.random.Generator) -> RawFinding | None:
+    def run(
+        self, item_set: ItemSet, rng: np.random.Generator, alpha: float = DEFAULT_ALPHA
+    ) -> RawFinding | None:
         """Measure how much of the key a probe recovers from options alone.
 
         Args:
             item_set: The corpus.
             rng: Seeded generator, used for fold assignment and tie-breaking.
+            alpha: Two-sided error rate for the interval.
 
         Returns:
             The finding, or ``None`` if the corpus is too small to cross-validate.
@@ -206,7 +210,7 @@ class ChoicesOnly:
 
         p_value = randomisation_p_value(simulated, point)
 
-        low, high = bootstrap_mean_interval(excess, rng, BOOTSTRAP_DRAWS, alpha=0.01)
+        low, high = bootstrap_mean_interval(excess, rng, BOOTSTRAP_DRAWS, alpha)
 
         detail = (
             f"probe accuracy {float(correct.mean()):.1%} against "
