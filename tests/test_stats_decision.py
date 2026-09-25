@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from evalassay.stats.decision import GateConfig, decide
+from evalassay.stats.decision import MIN_BOOTSTRAP_DRAWS, GateConfig, decide
 from evalassay.types import Estimate, Verdict
 
 
@@ -43,6 +43,31 @@ def test_refuses_to_charge_an_intervention_that_helped() -> None:
     assert "does not reduce accuracy" in decision.reason
 
 
+def test_the_thresholds_are_inclusive_where_the_method_says_so() -> None:
+    # METHOD.md: the adjusted p-value "clears alpha", and the effect is "at
+    # least min_effect in magnitude". Both edges are therefore admitted.
+    config = GateConfig(alpha=0.01, min_effect=0.02)
+    assert decide(_estimate(0.06, 0.04, 0.08), adjusted_p=0.01, config=config).established
+    assert decide(_estimate(0.02, 0.01, 0.03), adjusted_p=0.001, config=config).established
+
+
+def test_adjusted_p_values_at_the_ends_of_the_unit_interval_are_valid() -> None:
+    # Zero is reachable: the duplicate census reports p = 0.0 when it finds a
+    # repeat, and Holm leaves a zero at zero.
+    assert decide(_estimate(0.06, 0.04, 0.08), adjusted_p=0.0, config=GateConfig()).established
+    assert not decide(_estimate(0.06, 0.04, 0.08), adjusted_p=1.0, config=GateConfig()).established
+
+
+def test_a_zero_effect_is_never_charged_even_with_no_minimum_effect() -> None:
+    # With min_effect at zero the size condition cannot refuse a zero effect,
+    # so the direction condition is the only thing standing between a share of
+    # exactly nothing and a charge against the model.
+    config = GateConfig(min_effect=0.0)
+    decision = decide(_estimate(0.0, 0.01, 0.03), adjusted_p=0.001, config=config)
+    assert decision.verdict is Verdict.NOT_ESTABLISHED
+    assert "does not reduce accuracy" in decision.reason
+
+
 def test_can_be_configured_to_report_effects_in_either_direction() -> None:
     config = GateConfig(require_positive=False)
     decision = decide(_estimate(-0.05, -0.08, -0.02), adjusted_p=0.0001, config=config)
@@ -69,6 +94,7 @@ def test_config_rejects_thresholds_that_cannot_produce_an_audit() -> None:
         GateConfig(power=1.0)
     with pytest.raises(ValueError, match="bootstrap_draws"):
         GateConfig(bootstrap_draws=10)
+    assert GateConfig(bootstrap_draws=MIN_BOOTSTRAP_DRAWS).bootstrap_draws == MIN_BOOTSTRAP_DRAWS
     with pytest.raises(ValueError, match="min_effect"):
         GateConfig(min_effect=-0.1)
     # NaN fails every comparison, so it would pass a bare "< 0" check and then

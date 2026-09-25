@@ -11,6 +11,7 @@ from evalassay.stats.paired import (
     bca_ci,
     bootstrap_counts,
     mcnemar_exact,
+    mde_from_standard_error,
     minimum_detectable_effect,
     percentile_ci,
 )
@@ -241,6 +242,35 @@ def test_mde_grows_with_discordance() -> None:
     quiet = minimum_detectable_effect(0.05, n=500, alpha=0.01, power=0.8)
     noisy = minimum_detectable_effect(0.40, n=500, alpha=0.01, power=0.8)
     assert noisy > quiet
+
+
+def test_mde_matches_the_closed_form() -> None:
+    # (z at 1 - alpha/2 plus z at the power) standard errors, the paired
+    # standard error under the null being sqrt(discordance / n). At alpha 0.05
+    # and power 0.8 that is the textbook 2.80 standard errors. The tests above
+    # only compare MDEs with each other, which a wrong constant would survive.
+    assert minimum_detectable_effect(0.2, n=100, alpha=0.05, power=0.8) == pytest.approx(
+        2.801585218 * np.sqrt(0.2 / 100), rel=1e-8
+    )
+    # Every pair disagreeing is the largest legal discordance, not an error.
+    assert minimum_detectable_effect(1.0, n=100, alpha=0.05, power=0.8) == pytest.approx(
+        0.2801585218, rel=1e-8
+    )
+    # The bootstrap route used for Shapley shares: 2.5758 + 1.2816 at alpha
+    # 0.01 and power 0.9.
+    assert mde_from_standard_error(0.01, alpha=0.01, power=0.9) == pytest.approx(
+        0.03857380871, rel=1e-8
+    )
+    assert mde_from_standard_error(0.0, alpha=0.01, power=0.9) == 0.0
+
+
+def test_mde_from_standard_error_rejects_out_of_range_arguments() -> None:
+    with pytest.raises(ValueError, match="standard_error"):
+        mde_from_standard_error(-0.01, alpha=0.05, power=0.8)
+    with pytest.raises(ValueError, match="alpha"):
+        mde_from_standard_error(0.01, alpha=1.0, power=0.8)
+    with pytest.raises(ValueError, match="power"):
+        mde_from_standard_error(0.01, alpha=0.05, power=0.0)
 
 
 def test_mde_is_zero_when_nothing_was_estimable() -> None:
