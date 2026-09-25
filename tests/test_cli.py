@@ -178,6 +178,59 @@ def test_convert_round_trips_through_the_canonical_format(
 
 
 # --------------------------------------------------------------------------
+# audit
+# --------------------------------------------------------------------------
+
+
+class _ScorerBuiltError(Exception):
+    """Raised by the stand-in scorer once it has recorded how it was built."""
+
+
+def test_audit_hands_precision_and_threads_to_the_scorer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Both options exist to stop a large model taking the machine down. Parsing
+    # them and then loading the model at full precision on every core would fail
+    # the user at exactly the moment they were asked for.
+    from evalassay.score import local
+
+    received: dict[str, object] = {}
+
+    def stand_in(model_name: str, **options: object) -> None:
+        received.update(options, model_name=model_name)
+        raise _ScorerBuiltError
+
+    monkeypatch.setattr(local, "LocalScorer", stand_in)
+    corpus = _write_canonical(tmp_path / "corpus.jsonl")
+    with pytest.raises(_ScorerBuiltError):
+        main(
+            [
+                *("audit", str(corpus), "--model", "some-model", "--style", "labelled"),
+                *("--dtype", "bfloat16", "--threads", "2", "--unnormalised"),
+            ]
+        )
+    assert received == {
+        "model_name": "some-model",
+        "style": "labelled",
+        "dtype": "bfloat16",
+        "threads": 2,
+        "length_normalise": False,
+    }
+
+
+def test_audit_refuses_a_thread_count_below_one(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # Checked before any model is loaded, so this needs no optional extras and
+    # ends in a clean refusal rather than a traceback from inside torch.
+    corpus = _write_canonical(tmp_path / "corpus.jsonl")
+    with pytest.raises(SystemExit) as caught:
+        main(["audit", str(corpus), "--model", "some-model", "--threads", "0"])
+    assert caught.value.code == 2
+    assert "threads must be at least 1" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
 # Parsing and failure handling
 # --------------------------------------------------------------------------
 

@@ -374,6 +374,14 @@ def test_an_unknown_dtype_is_refused() -> None:
         LocalScorer(MODEL_FOR_LOCAL_TESTS, dtype="float8")
 
 
+def test_a_thread_count_below_one_is_refused() -> None:
+    # Validated before torch is imported, so this runs without the extras.
+    from evalassay.score.local import LocalScorer
+
+    with pytest.raises(ValueError, match="threads must be at least 1"):
+        LocalScorer(MODEL_FOR_LOCAL_TESTS, threads=0)
+
+
 def test_loading_is_refused_when_memory_is_nearly_gone() -> None:
     # Loading a model that does not fit does not fail cleanly, it drives the
     # machine into swapping and takes everything else with it. Refusing is the

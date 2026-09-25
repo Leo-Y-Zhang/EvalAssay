@@ -262,7 +262,13 @@ def cmd_audit(args: argparse.Namespace) -> int:
     from evalassay.score.local import LocalScorer  # noqa: PLC0415 - optional dependency
 
     corpus = _prepare(_load(args.format, args.corpus), args.items, args.seed)
-    scorer = LocalScorer(args.model, style=args.style, length_normalise=not args.unnormalised)
+    scorer = LocalScorer(
+        args.model,
+        style=args.style,
+        dtype=args.dtype,
+        threads=args.threads,
+        length_normalise=not args.unnormalised,
+    )
     report = run_audit(corpus, scorer, AuditConfig(seed=args.seed, gate=_gate(args)))
     _emit(render(report), to_json(report) if args.json else None, args.json)
     return 0
