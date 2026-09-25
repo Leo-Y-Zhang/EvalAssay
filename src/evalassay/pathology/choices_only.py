@@ -30,6 +30,7 @@ from evalassay.pathology.base import (
     RawFinding,
     bootstrap_mean_interval,
     make_estimate,
+    randomisation_p_value,
     tokenise,
 )
 from evalassay.types import ItemSet
@@ -203,8 +204,7 @@ class ChoicesOnly:
             hits = rng.random((stop - start, n_items)) < chance
             simulated[start:stop] = (hits - chance).mean(axis=1)
 
-        extreme = int(np.count_nonzero(np.abs(simulated) >= abs(point)))
-        p_value = (1 + extreme) / (RANDOMISATIONS + 1)
+        p_value = randomisation_p_value(simulated, point)
 
         low, high = bootstrap_mean_interval(excess, rng, BOOTSTRAP_DRAWS, alpha=0.01)
 

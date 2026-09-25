@@ -23,7 +23,12 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-from evalassay.pathology.base import RawFinding, bootstrap_mean_interval, make_estimate
+from evalassay.pathology.base import (
+    RawFinding,
+    bootstrap_mean_interval,
+    make_estimate,
+    randomisation_p_value,
+)
 from evalassay.types import ItemSet
 
 FloatArray = NDArray[np.float64]
@@ -107,10 +112,7 @@ class LongestAnswer:
             drawn = (rng.random((stop - start, n_items)) * counts).astype(np.int64)
             simulated[start:stop] = (padded[rows, drawn] - chance).mean(axis=1)
 
-        extreme = int(np.count_nonzero(np.abs(simulated) >= abs(point)))
-        # The plus-one form keeps the p-value strictly positive: a randomisation
-        # test can never license a claim of exactly zero probability.
-        p_value = (1 + extreme) / (RANDOMISATIONS + 1)
+        p_value = randomisation_p_value(simulated, point)
 
         low, high = bootstrap_mean_interval(excess, rng, BOOTSTRAP_DRAWS, alpha=0.01)
 

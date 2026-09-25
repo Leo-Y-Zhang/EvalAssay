@@ -19,9 +19,9 @@ import pytest
 
 from evalassay.corpus.synthetic import CorpusSpec, generate
 from evalassay.pathology import run_all
-from evalassay.pathology.base import tokenise, wilson_interval
+from evalassay.pathology.base import randomisation_p_value, tokenise, wilson_interval
 from evalassay.pathology.choices_only import ChoicesOnly
-from evalassay.pathology.longest_answer import LongestAnswer
+from evalassay.pathology.longest_answer import RANDOMISATIONS, LongestAnswer
 from evalassay.pathology.near_duplicate import (
     JACCARD_THRESHOLD,
     MAX_CANDIDATES_PER_ITEM,
@@ -134,6 +134,64 @@ def test_near_duplicate_recovers_planted_repeats() -> None:
     extra = len(corpus) - spec.n_items
     expected_rate = 2 * extra / len(corpus)
     assert finding.estimate.point == pytest.approx(expected_rate, abs=0.01)  # type: ignore[attr-defined]
+
+
+def _ragged_length_corpus(seed: int, n_items: int = 60) -> ItemSet:
+    """Items with three to five options and frequent ties for the longest.
+
+    Tie credits and chance baselines of a third or a fifth are not exact in
+    binary floating point, so different ways of summing the same values round
+    differently - which is what this corpus exists to exercise.
+    """
+    rng = np.random.default_rng(seed)
+    items = []
+    for index in range(n_items):
+        k = int(rng.choice([3, 4, 5]))
+        choices = tuple("x" * int(rng.integers(3, 6)) + str(j) for j in range(k))
+        items.append(Item(f"r{index}", f"question {index}?", choices, int(rng.integers(k))))
+    return ItemSet(name="ragged", items=tuple(items))
+
+
+def test_longest_answer_p_value_counts_draws_that_tie_the_observed_statistic() -> None:
+    # A randomisation p-value counts every draw at least as extreme as the
+    # observed statistic, ties included. On this corpus ties are common, and
+    # they are recounted here in exact integer arithmetic: every credit and
+    # chance baseline is scaled by 60, the lowest common multiple of the
+    # denominators involved. The null draws are regenerated exactly as the
+    # detector makes them. Compared in floating point instead, a draw that is
+    # algebraically equal to the observed value can land a rounding error below
+    # it and go uncounted, which makes the p-value too small.
+    corpus = _ragged_length_corpus(seed=3)
+    finding = LongestAnswer().run(corpus, np.random.default_rng(5))
+    assert finding is not None
+
+    scale = 60
+    n_choices = np.array([item.n_choices for item in corpus], dtype=np.int64)
+    credit = np.zeros((len(corpus), int(n_choices.max())), dtype=np.int64)
+    for row, item in enumerate(corpus):
+        lengths = np.array([len(choice) for choice in item.choices])
+        winners = np.flatnonzero(lengths == lengths.max())
+        credit[row, winners] = scale // winners.size
+        credit[row, : item.n_choices] -= scale // item.n_choices
+
+    rows = np.arange(len(corpus))
+    observed = int(credit[rows, [item.answer_index for item in corpus]].sum())
+    drawn = (np.random.default_rng(5).random((RANDOMISATIONS, len(corpus))) * n_choices).astype(
+        np.int64
+    )
+    simulated = credit[rows, drawn].sum(axis=1)
+    extreme = int(np.count_nonzero(np.abs(simulated) >= abs(observed)))
+    assert int(np.count_nonzero(np.abs(simulated) == abs(observed))) > 0, "no ties to count"
+
+    assert finding.estimate.p_value == (1 + extreme) / (RANDOMISATIONS + 1)
+
+
+def test_randomisation_p_value_counts_a_tie_lost_to_rounding() -> None:
+    observed = 0.1 + 0.2  # one rounding step above 0.3
+    simulated = np.array([0.3, -0.3, 0.2, 0.5], dtype=np.float64)
+    # 0.3 and -0.3 tie the observed magnitude and 0.5 exceeds it; 0.2 does not.
+    assert randomisation_p_value(simulated, observed) == pytest.approx((1 + 3) / (4 + 1))
+    assert randomisation_p_value(simulated, 0.6) == pytest.approx(1 / 5)
 
 
 # --------------------------------------------------------------------------
