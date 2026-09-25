@@ -151,6 +151,21 @@ def test_bca_falls_back_when_the_jackknife_has_no_spread() -> None:
     assert high == pytest.approx(expected_high)
 
 
+def test_bca_falls_back_when_the_corrected_quantile_leaves_the_unit_interval() -> None:
+    # A strong bias (93% of replicates below the point) and the largest
+    # acceleration a jackknife can produce (one value far from the rest) push
+    # the upper corrected quantile to exactly 1.0. An endpoint read at the
+    # 100th percentile would just be the largest replicate, so the percentile
+    # interval is returned instead.
+    replicates = _f64(np.linspace(0.0, 1.0, 1001))
+    jackknife = _f64(np.zeros(200))
+    jackknife[0] = -1.0
+    low, high = bca_ci(0.933, replicates, jackknife, alpha=0.01)
+    expected_low, expected_high = percentile_ci(replicates, alpha=0.01)
+    assert low == pytest.approx(expected_low)
+    assert high == pytest.approx(expected_high)
+
+
 def test_bca_rejects_bad_arguments() -> None:
     with pytest.raises(ValueError, match="no bootstrap replicates"):
         bca_ci(0.0, _f64([]), _f64([1.0, 2.0]), alpha=0.05)
@@ -228,6 +243,34 @@ def test_bca_correction_shifts_interval_from_plain_percentile_on_skewed_sample()
     assert (bca_low, bca_high) != pytest.approx((pct_low, pct_high))
     assert abs(bca_low - pct_low) > 0.01
     assert abs(bca_high - pct_high) > 0.01
+
+
+def test_bca_ci_agrees_with_scipy_on_a_continuous_skewed_sample() -> None:
+    # An independent implementation, fed the same replicates. Continuous data
+    # is the point: replicates of a proportion over a few dozen items take only
+    # a few dozen distinct values, so the percentile lookup is flat over wide
+    # ranges of quantile and an error in the quantile arithmetic - a wrong
+    # constant in the acceleration, alpha / 3 in place of alpha / 2 - can leave
+    # the endpoints of the tests above unchanged. Every replicate of this mean
+    # is distinct, so no replicate ties the point estimate either, which is the
+    # one place scipy's convention differs (it counts a tie as half below).
+    data = _f64(np.random.default_rng(0).exponential(size=30))
+    jackknife = _f64((data.sum() - data) / (data.size - 1))
+    for alpha in (0.10, 0.05, 0.01):
+        reference = sps.bootstrap(
+            (data,),
+            np.mean,
+            n_resamples=4000,
+            method="BCa",
+            confidence_level=1.0 - alpha,
+            random_state=np.random.default_rng(100),
+        )
+        replicates = _f64(reference.bootstrap_distribution)
+        low, high = bca_ci(float(data.mean()), replicates, jackknife, alpha)
+        assert low == pytest.approx(float(reference.confidence_interval.low), abs=1e-12)
+        assert high == pytest.approx(float(reference.confidence_interval.high), abs=1e-12)
+        # And the correction is doing something on this sample.
+        assert (low, high) != pytest.approx(percentile_ci(replicates, alpha), abs=1e-3)
 
 
 def test_mde_shrinks_with_sample_size() -> None:
