@@ -15,9 +15,12 @@ Two consequences are recorded rather than glossed over:
   statistic in the audit is built from per-item correctness, so this is
   sufficient - but it means the audit cannot see how close a call was.
 
-A reply that names no valid option is recorded as an abstention and scored as
-incorrect, and the count is reported. Retrying until the model produces
-something parseable would quietly select for the items it finds easy.
+A reply that names no valid option is recorded as an abstention and counted
+on the scorer (``abstentions``, also in :meth:`ApiScorer.describe`). It returns
+an all-zero score vector, so the deterministic tie-break picks an option and
+the item is scored correct only if that happens to be the key - as a guess, not
+as knowledge. Retrying until the model produces something parseable would
+quietly select for the items it finds easy.
 """
 
 from __future__ import annotations

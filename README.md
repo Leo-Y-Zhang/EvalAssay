@@ -361,7 +361,7 @@ yourself, under whatever licence they carry.
 
 Gate on every commit: `ruff check`, `ruff format --check`, `mypy` (strict, over
 source *and* tests), `pytest`, and the calibration sweep. `python verify.py`
-runs all ten checks and currently passes all ten.
+runs all eleven checks and currently passes all eleven.
 
 ## What it does not do
 
