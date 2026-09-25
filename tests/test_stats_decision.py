@@ -71,6 +71,10 @@ def test_config_rejects_thresholds_that_cannot_produce_an_audit() -> None:
         GateConfig(bootstrap_draws=10)
     with pytest.raises(ValueError, match="min_effect"):
         GateConfig(min_effect=-0.1)
+    # NaN fails every comparison, so it would pass a bare "< 0" check and then
+    # switch the minimum-effect condition off: "abs(point) < nan" is never true.
+    with pytest.raises(ValueError, match="min_effect"):
+        GateConfig(min_effect=float("nan"))
 
 
 def test_config_serialises_for_hashing() -> None:
