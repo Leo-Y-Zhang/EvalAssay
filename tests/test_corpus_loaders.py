@@ -79,6 +79,15 @@ def test_mmlu_rejects_an_unusable_answer_label(tmp_path: Path) -> None:
         load_mmlu_csv(_write(tmp_path / "s.csv", "q,a,b,c,d,Z!\n"))
 
 
+@pytest.mark.parametrize("label", ["BC", "ab", "ABCD"])
+def test_mmlu_rejects_an_answer_label_of_several_letters(tmp_path: Path, label: str) -> None:
+    # Each of these is a substring of the label alphabet. Read that way, "BC"
+    # would silently become B, which is the quiet kind of error these loaders
+    # exist to refuse.
+    with pytest.raises(ValueError, match="unrecognised answer label"):
+        load_mmlu_csv(_write(tmp_path / "s.csv", f"q,a,b,c,d,{label}\n"))
+
+
 def test_mmlu_rejects_an_answer_label_past_the_last_option(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match=r"outside 0\.\.3"):
         load_mmlu_csv(_write(tmp_path / "s.csv", "q,a,b,c,d,F\n"))
