@@ -14,8 +14,11 @@ one.
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from evalassay.corpus.synthetic import CorpusSpec, generate
 from evalassay.pathology import run_all
@@ -185,6 +188,52 @@ def test_longest_answer_p_value_counts_draws_that_tie_the_observed_statistic() -
     assert int(np.count_nonzero(np.abs(simulated) == abs(observed))) > 0, "no ties to count"
 
     assert finding.estimate.p_value == (1 + extreme) / (RANDOMISATIONS + 1)
+
+
+class _RecordingGenerator:
+    """A seeded generator that keeps every block of uniform draws it hands out.
+
+    The choices-only detector spends its generator on folds and tie-breaks
+    before it draws its null, so the null cannot be regenerated from the seed
+    alone as the longest-answer test does. It is recorded instead.
+    """
+
+    def __init__(self, seed: int) -> None:
+        self._inner = np.random.default_rng(seed)
+        self.uniform: list[NDArray[np.float64]] = []
+
+    def random(self, size: tuple[int, int]) -> NDArray[np.float64]:
+        drawn = self._inner.random(size)
+        self.uniform.append(drawn)
+        return drawn
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._inner, name)
+
+
+def test_choices_only_p_value_counts_draws_that_tie_the_observed_statistic() -> None:
+    # The same property for the other randomisation test. Under its null each
+    # item is a hit with probability one over its option count, so every draw
+    # is a hit count less the fixed sum of those baselines, and ties with the
+    # observed statistic are common. Scaled by 60 the baselines are integers
+    # and the ties are counted exactly.
+    corpus = _ragged_length_corpus(seed=3)
+    recorder = _RecordingGenerator(seed=5)
+    finding = ChoicesOnly().run(corpus, cast("np.random.Generator", recorder))
+    assert finding is not None
+
+    uniform = np.concatenate(recorder.uniform)
+    assert uniform.shape[1] == len(corpus), "recorded something other than the null"
+    n_choices = np.array([item.n_choices for item in corpus], dtype=np.int64)
+    chance = 1.0 / n_choices
+    baseline = int((60 // n_choices).sum())
+    simulated = 60 * (uniform < chance).sum(axis=1) - baseline
+    hits = round(finding.estimate.point * len(corpus) + float(chance.sum()))
+    observed = 60 * hits - baseline
+    extreme = int(np.count_nonzero(np.abs(simulated) >= abs(observed)))
+    assert int(np.count_nonzero(np.abs(simulated) == abs(observed))) > 0, "no ties to count"
+
+    assert finding.estimate.p_value == (1 + extreme) / (simulated.size + 1)
 
 
 def test_randomisation_p_value_counts_a_tie_lost_to_rounding() -> None:
