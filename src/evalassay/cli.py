@@ -99,12 +99,17 @@ def _prepare(corpus: ItemSet, items: int | None, seed: int) -> ItemSet:
 def _gate(args: argparse.Namespace) -> GateConfig:
     """Build the default-deny thresholds from parsed arguments.
 
+    ``pathology`` takes no ``--bootstrap``, so its gate keeps the default draw
+    count, which nothing in the model-free layer reads.
+
     Args:
         args: Parsed arguments.
 
     Returns:
         The thresholds.
     """
+    if "bootstrap" not in args:
+        return GateConfig(alpha=args.alpha, power=args.power, min_effect=args.min_effect)
     return GateConfig(
         alpha=args.alpha,
         power=args.power,
@@ -274,16 +279,26 @@ def cmd_audit(args: argparse.Namespace) -> int:
     return 0
 
 
-def _add_gate_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_gate_arguments(parser: argparse.ArgumentParser, *, resampled: bool = True) -> None:
     """Attach the pre-registered threshold options to a subparser.
 
     Args:
         parser: The subparser.
+        resampled: Whether to offer ``--bootstrap``. The model-free detectors
+            draw fixed resample counts of their own, so ``pathology`` does not:
+            there the option could only be accepted and ignored.
     """
     group = parser.add_argument_group("default-deny thresholds")
     group.add_argument("--alpha", type=float, default=0.01, help="family-wise significance level")
     group.add_argument("--power", type=float, default=0.80, help="target power, for the MDE")
-    group.add_argument("--bootstrap", type=int, default=10_000, help="bootstrap resamples")
+    if resampled:
+        group.add_argument(
+            "--bootstrap",
+            type=int,
+            default=10_000,
+            help="bootstrap resamples for the model-side intervals; "
+            "the benchmark detectors use fixed counts",
+        )
     group.add_argument(
         "--min-effect", type=float, default=0.005, help="smallest effect worth reporting"
     )
@@ -323,7 +338,7 @@ def build_parser() -> argparse.ArgumentParser:
     pathology.add_argument("--format", choices=sorted(LOADERS), default="canonical")
     pathology.add_argument("--items", type=int, default=None, help="subsample to this many items")
     pathology.add_argument("--seed", type=int, default=7)
-    _add_gate_arguments(pathology)
+    _add_gate_arguments(pathology, resampled=False)
     pathology.set_defaults(func=cmd_pathology)
 
     convert = subparsers.add_parser("convert", help="convert a benchmark to the canonical format")

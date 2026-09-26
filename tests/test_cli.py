@@ -147,6 +147,29 @@ def test_pathology_inspects_a_corpus_without_a_model(
         assert detector in output
 
 
+def test_pathology_refuses_a_bootstrap_size_it_would_ignore(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # The detectors draw fixed resample counts of their own, so the option
+    # could only be accepted and ignored here. A refusal says so; silence would
+    # let someone believe they had tightened the intervals.
+    corpus = _write_canonical(tmp_path / "corpus.jsonl")
+    with pytest.raises(SystemExit) as caught:
+        main(["pathology", str(corpus), "--bootstrap", "20000"])
+    assert caught.value.code == 2
+    assert "unrecognized arguments: --bootstrap" in capsys.readouterr().err
+
+
+def test_pathology_still_takes_the_thresholds_it_uses(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    corpus = _write_canonical(tmp_path / "corpus.jsonl")
+    output = _run(
+        capsys, "pathology", str(corpus), "--alpha", "0.05", "--power", "0.9", "--min-effect", "0"
+    )
+    assert "Benchmark defects" in output
+
+
 def test_pathology_says_when_a_detector_could_not_be_measured(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
