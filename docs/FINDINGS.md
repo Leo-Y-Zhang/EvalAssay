@@ -410,7 +410,7 @@ rather than a score.
 Every earlier audit came back at 100% purity. This one did not:
 
 ```
-  stronger_distractor         -0.0740  [0.0120, 0.1380]  charged
+  stronger_distractor         -0.0740  [-0.1380, -0.0120]  charged
   Assayed capability                            0.4620
   Purity                                        86.2%
 ```

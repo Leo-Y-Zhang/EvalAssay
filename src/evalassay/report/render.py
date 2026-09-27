@@ -110,9 +110,13 @@ def render_decomposition(report: AuditReport) -> list[str]:
     for component in report.components:
         if component.verdict is Verdict.ESTABLISHED:
             estimate = component.estimate
+            # Printed as a deduction from the reported score, so the interval
+            # is negated along with the point. Left as the share's interval, a
+            # share of 0.05 in [0.03, 0.07] read "-0.0500  [0.0300, 0.0700]":
+            # a number outside the interval printed beside it.
             lines.append(
                 f"  {component.name:<26}{-estimate.point:>9.4f}  "
-                f"[{estimate.ci_low:.4f}, {estimate.ci_high:.4f}]  charged"
+                f"[{-estimate.ci_high:.4f}, {-estimate.ci_low:.4f}]  charged"
             )
         else:
             lines.append(

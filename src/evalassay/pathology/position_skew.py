@@ -42,6 +42,8 @@ from evalassay.pathology.base import (
     largest_uniform_subset,
     make_estimate,
 )
+from evalassay.stats.decision import DEFAULT_ALPHA
+from evalassay.stats.paired import percentile_ci
 from evalassay.types import ItemSet
 
 FloatArray = NDArray[np.float64]
@@ -93,12 +95,15 @@ class PositionSkew:
     name: str = "position_skew"
     assumes_independent_items: bool = True
 
-    def run(self, item_set: ItemSet, rng: np.random.Generator) -> RawFinding | None:
+    def run(
+        self, item_set: ItemSet, rng: np.random.Generator, alpha: float = DEFAULT_ALPHA
+    ) -> RawFinding | None:
         """Measure how far the answer-position distribution sits from uniform.
 
         Args:
             item_set: The corpus.
             rng: Seeded generator.
+            alpha: Two-sided error rate for the interval.
 
         Returns:
             The finding, or ``None`` if no group of items shares a choice count
@@ -129,7 +134,7 @@ class PositionSkew:
         resampled = draw_counts @ per_item
         shares = resampled / n_items
         replicates = 0.5 * np.abs(shares - 1.0 / n_choices).sum(axis=1) - bias
-        low, high = np.percentile(replicates, [0.5, 99.5])
+        low, high = percentile_ci(replicates, alpha)
 
         modal = int(np.argmax(counts))
         modal_share = float(counts[modal] / n_items)

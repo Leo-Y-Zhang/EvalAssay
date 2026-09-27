@@ -14,14 +14,17 @@ one.
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from evalassay.corpus.synthetic import CorpusSpec, generate
 from evalassay.pathology import run_all
-from evalassay.pathology.base import tokenise, wilson_interval
+from evalassay.pathology.base import randomisation_p_value, tokenise, wilson_interval
 from evalassay.pathology.choices_only import ChoicesOnly
-from evalassay.pathology.longest_answer import LongestAnswer
+from evalassay.pathology.longest_answer import RANDOMISATIONS, LongestAnswer
 from evalassay.pathology.near_duplicate import (
     JACCARD_THRESHOLD,
     MAX_CANDIDATES_PER_ITEM,
@@ -34,6 +37,7 @@ from evalassay.pathology.near_duplicate import (
 )
 from evalassay.pathology.position_skew import PositionSkew, total_variation
 from evalassay.pathology.runner import default_detectors
+from evalassay.stats.decision import GateConfig
 from evalassay.types import Item, ItemSet, Verdict
 
 N_ITEMS = 600
@@ -136,6 +140,110 @@ def test_near_duplicate_recovers_planted_repeats() -> None:
     assert finding.estimate.point == pytest.approx(expected_rate, abs=0.01)  # type: ignore[attr-defined]
 
 
+def _ragged_length_corpus(seed: int, n_items: int = 60) -> ItemSet:
+    """Items with three to five options and frequent ties for the longest.
+
+    Tie credits and chance baselines of a third or a fifth are not exact in
+    binary floating point, so different ways of summing the same values round
+    differently - which is what this corpus exists to exercise.
+    """
+    rng = np.random.default_rng(seed)
+    items = []
+    for index in range(n_items):
+        k = int(rng.choice([3, 4, 5]))
+        choices = tuple("x" * int(rng.integers(3, 6)) + str(j) for j in range(k))
+        items.append(Item(f"r{index}", f"question {index}?", choices, int(rng.integers(k))))
+    return ItemSet(name="ragged", items=tuple(items))
+
+
+def test_longest_answer_p_value_counts_draws_that_tie_the_observed_statistic() -> None:
+    # A randomisation p-value counts every draw at least as extreme as the
+    # observed statistic, ties included. On this corpus ties are common, and
+    # they are recounted here in exact integer arithmetic: every credit and
+    # chance baseline is scaled by 60, the lowest common multiple of the
+    # denominators involved. The null draws are regenerated exactly as the
+    # detector makes them. Compared in floating point instead, a draw that is
+    # algebraically equal to the observed value can land a rounding error below
+    # it and go uncounted, which makes the p-value too small.
+    corpus = _ragged_length_corpus(seed=3)
+    finding = LongestAnswer().run(corpus, np.random.default_rng(5))
+    assert finding is not None
+
+    scale = 60
+    n_choices = np.array([item.n_choices for item in corpus], dtype=np.int64)
+    credit = np.zeros((len(corpus), int(n_choices.max())), dtype=np.int64)
+    for row, item in enumerate(corpus):
+        lengths = np.array([len(choice) for choice in item.choices])
+        winners = np.flatnonzero(lengths == lengths.max())
+        credit[row, winners] = scale // winners.size
+        credit[row, : item.n_choices] -= scale // item.n_choices
+
+    rows = np.arange(len(corpus))
+    observed = int(credit[rows, [item.answer_index for item in corpus]].sum())
+    drawn = (np.random.default_rng(5).random((RANDOMISATIONS, len(corpus))) * n_choices).astype(
+        np.int64
+    )
+    simulated = credit[rows, drawn].sum(axis=1)
+    extreme = int(np.count_nonzero(np.abs(simulated) >= abs(observed)))
+    assert int(np.count_nonzero(np.abs(simulated) == abs(observed))) > 0, "no ties to count"
+
+    assert finding.estimate.p_value == (1 + extreme) / (RANDOMISATIONS + 1)
+
+
+class _RecordingGenerator:
+    """A seeded generator that keeps every block of uniform draws it hands out.
+
+    The choices-only detector spends its generator on folds and tie-breaks
+    before it draws its null, so the null cannot be regenerated from the seed
+    alone as the longest-answer test does. It is recorded instead.
+    """
+
+    def __init__(self, seed: int) -> None:
+        self._inner = np.random.default_rng(seed)
+        self.uniform: list[NDArray[np.float64]] = []
+
+    def random(self, size: tuple[int, int]) -> NDArray[np.float64]:
+        drawn = self._inner.random(size)
+        self.uniform.append(drawn)
+        return drawn
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._inner, name)
+
+
+def test_choices_only_p_value_counts_draws_that_tie_the_observed_statistic() -> None:
+    # The same property for the other randomisation test. Under its null each
+    # item is a hit with probability one over its option count, so every draw
+    # is a hit count less the fixed sum of those baselines, and ties with the
+    # observed statistic are common. Scaled by 60 the baselines are integers
+    # and the ties are counted exactly.
+    corpus = _ragged_length_corpus(seed=3)
+    recorder = _RecordingGenerator(seed=5)
+    finding = ChoicesOnly().run(corpus, cast("np.random.Generator", recorder))
+    assert finding is not None
+
+    uniform = np.concatenate(recorder.uniform)
+    assert uniform.shape[1] == len(corpus), "recorded something other than the null"
+    n_choices = np.array([item.n_choices for item in corpus], dtype=np.int64)
+    chance = 1.0 / n_choices
+    baseline = int((60 // n_choices).sum())
+    simulated = 60 * (uniform < chance).sum(axis=1) - baseline
+    hits = round(finding.estimate.point * len(corpus) + float(chance.sum()))
+    observed = 60 * hits - baseline
+    extreme = int(np.count_nonzero(np.abs(simulated) >= abs(observed)))
+    assert int(np.count_nonzero(np.abs(simulated) == abs(observed))) > 0, "no ties to count"
+
+    assert finding.estimate.p_value == (1 + extreme) / (simulated.size + 1)
+
+
+def test_randomisation_p_value_counts_a_tie_lost_to_rounding() -> None:
+    observed = 0.1 + 0.2  # one rounding step above 0.3
+    simulated = np.array([0.3, -0.3, 0.2, 0.5], dtype=np.float64)
+    # 0.3 and -0.3 tie the observed magnitude and 0.5 exceeds it; 0.2 does not.
+    assert randomisation_p_value(simulated, observed) == pytest.approx((1 + 3) / (4 + 1))
+    assert randomisation_p_value(simulated, 0.6) == pytest.approx(1 / 5)
+
+
 # --------------------------------------------------------------------------
 # Orthogonality: a planted defect must not fire the wrong detector
 # --------------------------------------------------------------------------
@@ -223,6 +331,41 @@ def test_multiplicity_correction_is_applied_across_the_family() -> None:
     report = run_all(generate(_clean()), seed=3)
     for finding in report.findings:
         assert finding.adjusted_p >= finding.estimate.p_value
+
+
+def test_detector_intervals_are_built_at_the_gate_alpha() -> None:
+    # The gate asks whether each interval excludes zero, and the runner reads
+    # the minimum detectable effect off the interval's width assuming it was
+    # built at the gate's alpha. An interval fixed at 99% whatever the gate said
+    # made a looser alpha report a *larger* MDE, which cannot be right: a
+    # looser threshold can only make smaller effects detectable.
+    corpus = generate(
+        CorpusSpec(
+            n_items=400,
+            n_choices=4,
+            seed=3,
+            position_bias=0.1,
+            longest_answer_rate=0.1,
+            choices_only_rate=0.1,
+            duplicate_rate=0.05,
+        )
+    )
+    strict = {f.detector: f for f in run_all(corpus, 7, GateConfig(alpha=0.01)).findings}
+    loose = {f.detector: f for f in run_all(corpus, 7, GateConfig(alpha=0.10)).findings}
+    assert set(strict) == set(loose) == {d.name for d in default_detectors()}
+
+    for name, finding in strict.items():
+        wide, narrow = finding.estimate, loose[name].estimate
+        assert narrow.point == wide.point, name
+        assert narrow.ci_high - narrow.ci_low < wide.ci_high - wide.ci_low, name
+        assert loose[name].mde < finding.mde, name
+
+
+def test_a_detector_run_on_its_own_uses_the_default_gate_alpha() -> None:
+    corpus = generate(CorpusSpec(n_items=N_ITEMS, n_choices=4, seed=4, position_bias=0.2))
+    implicit = PositionSkew().run(corpus, np.random.default_rng(1))
+    explicit = PositionSkew().run(corpus, np.random.default_rng(1), alpha=GateConfig().alpha)
+    assert implicit == explicit
 
 
 def test_established_filters_the_finding_list() -> None:

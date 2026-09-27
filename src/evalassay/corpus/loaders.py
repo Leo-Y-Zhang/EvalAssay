@@ -47,7 +47,8 @@ def _answer_index(label: str, n_choices: int, where: str) -> int:
     if not cleaned:
         raise ValueError(f"{where}: empty answer label")
 
-    if cleaned.upper() in LETTERS:
+    # One letter only: a substring test alone would read "BC" as B.
+    if len(cleaned) == 1 and cleaned.upper() in LETTERS:
         index = LETTERS.index(cleaned.upper())
     elif cleaned.isdigit():
         index = int(cleaned) - 1

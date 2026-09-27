@@ -112,6 +112,17 @@ def test_an_established_component_is_printed_as_a_deduction() -> None:
     assert "charged" in charged_line
 
 
+def test_a_charged_share_is_printed_inside_its_own_interval() -> None:
+    # The share is 0.06 in [0.03, 0.07]. Printed as a deduction it is -0.06,
+    # so the interval beside it must be the deduction's, [-0.07, -0.03].
+    text = render(_report())
+    charged_line = next(line for line in text.splitlines() if "charged_one" in line)
+    point = float(charged_line.split()[1])
+    low, high = (float(bound) for bound in charged_line.split("[")[1].split("]")[0].split(","))
+    assert (point, low, high) == (-0.06, -0.07, -0.03)
+    assert low <= point <= high
+
+
 def test_provenance_precedes_the_result() -> None:
     lines = render(_report()).splitlines()
     corpus_at = next(i for i, line in enumerate(lines) if "demo-corpus" in line)

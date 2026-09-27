@@ -153,8 +153,8 @@ every run so it cannot go stale:
 Reported score                                  0.7200
 Chance (uniform guessing)                       0.2500
 ------------------------------------------------------------------------------
-  stronger_distractor         -0.0493  [0.0318, 0.0725]  charged
-  neutral_reframing           -0.1166  [0.0873, 0.1525]  charged
+  stronger_distractor         -0.0493  [-0.0725, -0.0318]  charged
+  neutral_reframing           -0.1166  [-0.1525, -0.0873]  charged
   permute_options                   -  not established (MDE 0.0445)
                                        adjusted p 0.9625 exceeds alpha 0.0100
 ------------------------------------------------------------------------------
@@ -361,7 +361,7 @@ yourself, under whatever licence they carry.
 
 Gate on every commit: `ruff check`, `ruff format --check`, `mypy` (strict, over
 source *and* tests), `pytest`, and the calibration sweep. `python verify.py`
-runs all ten checks and currently passes all ten.
+runs all eleven checks and currently passes all eleven.
 
 ## What it does not do
 

@@ -117,7 +117,7 @@ def run_all(
     skipped: list[str] = []
     for detector in family:
         target = unique if detector.assumes_independent_items else item_set
-        result = detector.run(target, _detector_rng(seed, detector.name))
+        result = detector.run(target, _detector_rng(seed, detector.name), alpha=gate.alpha)
         if result is None:
             skipped.append(detector.name)
         else:
@@ -151,7 +151,9 @@ def _mde_from_interval(finding: RawFinding, gate: GateConfig) -> float:
 
     Detectors report intervals rather than standard errors, so the standard
     error is recovered from the interval's half-width before the usual formula
-    is applied.
+    is applied. That recovery divides by the gate's critical value, which is
+    only right because :func:`run_all` has every detector build its interval
+    at the gate's alpha.
 
     Reporting this is what makes a null finding informative. "Nothing found" is
     equally consistent with a clean benchmark and with a sample too small to

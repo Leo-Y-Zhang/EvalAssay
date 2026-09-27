@@ -22,12 +22,16 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import stats as sps
 
+from evalassay.stats.decision import DEFAULT_ALPHA
 from evalassay.types import Estimate, ItemSet
 
 FloatArray = NDArray[np.float64]
 
 TOKEN_PATTERN: Final = re.compile(r"[a-z0-9]+(?:[-'][a-z0-9]+)*")
 """Words, keeping internal hyphens and apostrophes, which carry meaning."""
+
+NUMERICAL_TOLERANCE: Final = 1e-12
+"""Below this, two values of a detector statistic differ only by rounding."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,12 +78,17 @@ class Detector(Protocol):
         """
         ...
 
-    def run(self, item_set: ItemSet, rng: np.random.Generator) -> RawFinding | None:
+    def run(
+        self, item_set: ItemSet, rng: np.random.Generator, alpha: float = DEFAULT_ALPHA
+    ) -> RawFinding | None:
         """Measure this defect on a corpus.
 
         Args:
             item_set: The corpus to inspect.
             rng: Seeded generator, for detectors that resample.
+            alpha: Two-sided error rate for the interval. The runner passes the
+                gate's, because the gate asks whether this interval excludes
+                zero and reads the minimum detectable effect off its width.
 
         Returns:
             The finding, or ``None`` if the detector does not apply to this
@@ -162,6 +171,32 @@ def bootstrap_mean_interval(
     means = (counts @ values) / n
     low, high = np.percentile(means, [100.0 * alpha / 2.0, 100.0 * (1.0 - alpha / 2.0)])
     return float(low), float(high)
+
+
+def randomisation_p_value(simulated: FloatArray, observed: float) -> float:
+    """Two-sided randomisation p-value, counting ties as at least as extreme.
+
+    The comparison allows :data:`NUMERICAL_TOLERANCE`, and that is a
+    correctness fix rather than a cosmetic one. The detector statistics are
+    averages of per-item values such as one third or one fifth, so many
+    simulated draws are algebraically *equal* to the observed statistic. They
+    are summed in a different order from it, though, and a rounding error can
+    put one just below the observed magnitude. Compared exactly, about half of
+    those ties went uncounted, which made the p-value too small - the
+    anti-conservative direction, in a test whose output is a criticism of
+    somebody's benchmark - and made it depend on the machine's summation order.
+
+    Args:
+        simulated: The statistic under the null, one value per draw.
+        observed: The statistic on the corpus.
+
+    Returns:
+        The p-value. The plus-one form keeps it strictly positive: a
+        randomisation test can never license a claim of exactly zero
+        probability.
+    """
+    extreme = int(np.count_nonzero(np.abs(simulated) >= abs(observed) - NUMERICAL_TOLERANCE))
+    return (1 + extreme) / (simulated.size + 1)
 
 
 def largest_uniform_subset(item_set: ItemSet) -> tuple[Sequence[int], int]:

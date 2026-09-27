@@ -24,6 +24,9 @@ from evalassay.types import Estimate, Verdict
 MIN_BOOTSTRAP_DRAWS: Final = 1000
 """Below this the percentile tails are too coarse for a stable interval."""
 
+DEFAULT_ALPHA: Final = 0.01
+"""Family-wise significance level unless a run pre-registers another."""
+
 
 @dataclass(frozen=True, slots=True)
 class GateConfig:
@@ -48,7 +51,7 @@ class GateConfig:
             deducted.
     """
 
-    alpha: float = 0.01
+    alpha: float = DEFAULT_ALPHA
     power: float = 0.80
     bootstrap_draws: int = 10_000
     min_effect: float = 0.005
@@ -69,8 +72,10 @@ class GateConfig:
                 f"bootstrap_draws {self.bootstrap_draws} too small for a stable "
                 f"interval; use at least {MIN_BOOTSTRAP_DRAWS}"
             )
-        if self.min_effect < 0.0:
-            raise ValueError(f"min_effect {self.min_effect} must not be negative")
+        # Written so that NaN fails it: NaN compares false with everything, so
+        # "< 0" would accept it and the gate's size condition would never fire.
+        if not self.min_effect >= 0.0:
+            raise ValueError(f"min_effect {self.min_effect} must be a number no less than zero")
 
     def as_dict(self) -> dict[str, float | int | bool]:
         """Configuration as a plain mapping, for hashing into the manifest.

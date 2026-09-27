@@ -23,7 +23,13 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-from evalassay.pathology.base import RawFinding, bootstrap_mean_interval, make_estimate
+from evalassay.pathology.base import (
+    RawFinding,
+    bootstrap_mean_interval,
+    make_estimate,
+    randomisation_p_value,
+)
+from evalassay.stats.decision import DEFAULT_ALPHA
 from evalassay.types import ItemSet
 
 FloatArray = NDArray[np.float64]
@@ -62,12 +68,15 @@ class LongestAnswer:
     name: str = "longest_answer"
     assumes_independent_items: bool = True
 
-    def run(self, item_set: ItemSet, rng: np.random.Generator) -> RawFinding | None:
+    def run(
+        self, item_set: ItemSet, rng: np.random.Generator, alpha: float = DEFAULT_ALPHA
+    ) -> RawFinding | None:
         """Measure how far the longest-option heuristic beats chance.
 
         Args:
             item_set: The corpus.
             rng: Seeded generator.
+            alpha: Two-sided error rate for the interval.
 
         Returns:
             The finding, or ``None`` if the corpus is too small.
@@ -107,12 +116,9 @@ class LongestAnswer:
             drawn = (rng.random((stop - start, n_items)) * counts).astype(np.int64)
             simulated[start:stop] = (padded[rows, drawn] - chance).mean(axis=1)
 
-        extreme = int(np.count_nonzero(np.abs(simulated) >= abs(point)))
-        # The plus-one form keeps the p-value strictly positive: a randomisation
-        # test can never license a claim of exactly zero probability.
-        p_value = (1 + extreme) / (RANDOMISATIONS + 1)
+        p_value = randomisation_p_value(simulated, point)
 
-        low, high = bootstrap_mean_interval(excess, rng, BOOTSTRAP_DRAWS, alpha=0.01)
+        low, high = bootstrap_mean_interval(excess, rng, BOOTSTRAP_DRAWS, alpha)
 
         tied = sum(1 for mask in masks if np.count_nonzero(mask > 0) > 1)
         detail = (

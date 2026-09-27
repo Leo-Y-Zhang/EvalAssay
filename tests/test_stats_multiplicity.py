@@ -49,6 +49,12 @@ def test_is_no_more_conservative_than_bonferroni() -> None:
     assert all(a <= min(1.0, len(raw) * r) for a, r in zip(adjusted, raw, strict=True))
 
 
+def test_accepts_the_ends_of_the_unit_interval() -> None:
+    # Zero is a real input, not an edge case: the duplicate census reports a
+    # p-value of exactly 0.0 whenever it finds a repeat.
+    assert holm_bonferroni([0.0, 0.5, 1.0]) == pytest.approx((0.0, 1.0, 1.0))
+
+
 def test_rejects_values_outside_the_unit_interval() -> None:
     with pytest.raises(ValueError, match="outside"):
         holm_bonferroni([0.5, 1.5])

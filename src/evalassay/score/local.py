@@ -199,13 +199,16 @@ class LocalScorer:
             ImportError: If the optional local-scoring dependencies are absent.
                 Raised with an actionable message rather than a bare import
                 error, because this is the most likely thing to be missing.
-            ValueError: If the style or dtype is unrecognised, or too little
-                memory is free to load a model safely.
+            ValueError: If the style or dtype is unrecognised, the thread count
+                is not positive, or too little memory is free to load a model
+                safely.
         """
         if style not in STYLES:
             raise ValueError(f"style must be one of {STYLES}, got {style!r}")
         if dtype not in DTYPES:
             raise ValueError(f"dtype must be one of {DTYPES}, got {dtype!r}")
+        if threads is not None and threads < 1:
+            raise ValueError(f"threads must be at least 1, got {threads}")
 
         available = free_memory_mb()
         if available is not None and available < MEMORY_FLOOR_MB:
